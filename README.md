@@ -58,7 +58,7 @@ The act phase is simply made up from the leaf nodes of the different behavior tr
 To see the full details about the implementation just download the source code. Here I am going to talk about very biefly of the most important things.
 
 ### Visibility algorithm
-Thanks to the perception system of UE4 was easy to determine if an NPC was seeing the player or not. However, as I wanted to compute a tactical pathfinding, I needed the exact visibility of the player (when was being seen by any NPC). To do thos I implemented a visibility algorithm based on Ray tracing. This algorithm uses a very low number of Ray Tracer because it only does a RayTrace against the vertex of each obstacle. Read more about this technique [here](http://www.redblobgames.com/articles/visibility/)
+Thanks to the perception system of UE4 was easy to determine if an NPC was seeing the player or not. However, as I wanted to compute a tactical pathfinding, I needed the exact visibility of the player (when was being seen by any NPC). To do this I implemented a visibility algorithm based on Ray tracing. This algorithm uses a very low number of Ray Tracer because it only does a RayTrace against the vertex of each obstacle, and then fills up the triangles made from these vertices (like Rasterization). Read more about this technique [here](http://www.redblobgames.com/articles/visibility/)
 
 ![visibility_algorithm.png](https://s22.postimg.org/6tewtygcx/visibility.png)
 
