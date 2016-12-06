@@ -1,7 +1,9 @@
 # AI system to simulate combat behaviors in a FPS game
 
 ## Demo
-See this youtube [playlist](https://www.youtube.com/playlist?list=PLeGS7otZ9mSexXzFVHJJb5Oaj1MCPA3rA) with many videos showing how the AI system behaves
+Checkout the all demo videos clickin on the image below.
+
+[![Youtube playlist with demo videos](http://img.youtube.com/vi/wSTioum0eas/0.jpg)](https://www.youtube.com/playlist?list=PLeGS7otZ9mSexXzFVHJJb5Oaj1MCPA3rA "Youtube playlist with demo videos")
 
 ## Introduction
 This is my final project of my MSc. in Computer Science (2014-2016) at the University of Girona, Catalonia, Spain. Special  thanks to Dr. Gustavo Patow for helping me with this project.
