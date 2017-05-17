@@ -1,6 +1,7 @@
 # Table of Contents
 &nbsp;[Demo](https://github.com/mtrebi/AI_FPS#demo)  <br/> 
 &nbsp;[Introduction](https://github.com/mtrebi/AI_FPS#introduction)  <br/> 
+&nbsp;[Introduction](https://github.com/mtrebi/AI_FPS#introduction)  <br/> 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Why Behavior Trees?](https://github.com/mtrebi/AI_FPS#why-behaviors-trees)  <br/> 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Why Unreal Engine 4?](https://github.com/mtrebi/AI_FPS#why-unreal-engine-4)  <br/> 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Goals](https://github.com/mtrebi/AI_FPS#goals)  <br/> 
@@ -11,7 +12,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Visibility algorithm](https://github.com/mtrebi/AI_FPS#visibility-algorithm)  <br/> 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Tactical pathfinding](https://github.com/mtrebi/AI_FPS#tactical-pathfinding)  <br/> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Group behavior](https://github.com/mtrebi/AI_FPS#group-behavior)  <br/> 
 &nbsp;[EQS tests](https://github.com/mtrebi/AI_FPS#eqs-tests)  <br/> 
-&nbsp;[Set up](https://github.com/mtrebi/AI_FPS#set-up)  <br/> 
+&nbsp;[Build instructions](https://github.com/mtrebi/AI_FPS#build-instructions)  <br/> 
 &nbsp;[References](https://github.com/mtrebi/AI_FPS#references)  <br/> 
 
 # Demo
@@ -20,7 +21,7 @@ Checkout the all demo videos clicking on the image below.
 [![Youtube playlist with demo videos](http://img.youtube.com/vi/wSTioum0eas/0.jpg)](https://www.youtube.com/watch?v=fTocYPT-k6o&list=PLeGS7otZ9mSexXzFVHJJb5Oaj1MCPA3rA&index=1 "Youtube playlist with demo videos")
 
 # Introduction
-This is my final project of my MSc. in Computer Science (2014-2016) at the University of Girona, Catalonia, Spain. Special  thanks to Dr. Gustavo Patow for helping me with this project.
+This is masther thesis in Computer Science (2014-2016) at the University of Girona, Catalonia, Spain. Special  thanks to Dr. Gustavo Patow for helping me with this project.
 
 The aim of this project is to build an AI system for an existing game. To do so, I replaced the AI system of the Shooter Game provided by the Library of Unreal Engine 4 with my own AI system. I didn't want to lose time developing a game. I wanted to focus only on the design and implementation of the AI system, and that's what I did.
 
@@ -104,8 +105,8 @@ To collect data from the environment I defined several custom tests to perform E
 Using one of these tests or combining many of them I made all the queries used in the game.
 ![visibility test.png](https://s12.postimg.org/vca7d2ynx/visibility_test.png)
 
-# Set up
-To set up the project just download or clone the source files and compile them using Visual Studio with the UE4 plugins. Then the UE4 will open with the test map. There you can check the behavior trees of the bots or simplyadd more bots, change their positions or attributes.
+# Build instructions
+To set up the project just download or clone the source files and compile them using Visual Studio with the UE4 plugins. Then the UE4 will open with the __test map__. There you can check the behavior trees of the bots or simply add more bots, change their positions or attributes. Make sure that __UE4 version is 4.10__
 
 # References
 To do this project I looked at so many websites that makes no sense to post them all here. However, I think that is worth mention:
