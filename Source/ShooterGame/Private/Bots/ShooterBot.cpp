@@ -12,7 +12,7 @@ AShooterBot::AShooterBot(const FObjectInitializer& ObjectInitializer)
 	UpdatePawnMeshes();
 
 	bUseControllerRotationYaw = true;
-	CharacterMovement->bUseRVOAvoidance = true;
+	CharacterMovement->bUseRVOAvoidance = false;
 }
 
 bool AShooterBot::IsFirstPerson() const

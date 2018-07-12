@@ -243,7 +243,7 @@ TArray<Triangle> HelperMethods::GetVisibleTriangles(const TArray<Vertex> Visible
 			else {
 				const bool ProjectedBlockingHitFound = World->LineTraceSingleByChannel(OutHit, EyesLocation, MaxProjectedVertex, ECollisionChannel::ECC_Visibility, CollisionParams);
 				if (ProjectedBlockingHitFound) {
-					PreviousVertex = OutHit.ImpactPoint;
+					PreviousVertex = OutHit.ImpactPoint; // NOPE
 				}
 				else {
 					PreviousVertex = OutHit.TraceEnd;

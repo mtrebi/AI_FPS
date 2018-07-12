@@ -75,7 +75,7 @@ float dtQueryFilter_Example::GetCustomCost(const FVector2D StartPosition, const 
 FVector2D dtQueryFilter_Example::GetMinimumVector(const FVector2D StartPosition, const FVector2D EndPosition) const {
 	const FVector2D OriginalVector = EndPosition - StartPosition;
 	float size = OriginalVector.Size();
-	return OriginalVector / OriginalVector.Size();
+	return OriginalVector / 10;
 }
 
 bool dtQueryFilter_Example::PositionIsVisibleByPlayer(const FVector2D Position) const {

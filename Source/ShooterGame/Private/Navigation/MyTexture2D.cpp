@@ -113,8 +113,8 @@ void MyTexture2D::Update() {
 }
 
 void MyTexture2D::Reset() {
-	//Texture->bChromaKeyTexture = !Texture->bChromaKeyTexture;
-	//Texture->bChromaKeyTexture = !Texture->bChromaKeyTexture;
+	Texture->bChromaKeyTexture = !Texture->bChromaKeyTexture;
+	Texture->bChromaKeyTexture = !Texture->bChromaKeyTexture;
 
 	Texture->UpdateResource();
 }
