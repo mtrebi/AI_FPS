@@ -52,11 +52,7 @@ To implement the think phase I used several behaviors trees:
 - Search behavior
 - Fight behavior
 
-![Transtions of the different behavior trees](https://s13.postimg.org/6bgn3mjs7/fsm.png)
-
-You can see the details of each behavior in the UE4 editor. Here is just the attack branch of the fight behavior, the most complex one:
-
-![Attach branch of the Fight behavior](https://s17.postimg.org/4qv84zfwf/image.png)
+![Complete Behavior Tree](https://github.com/mtrebi/AI_FPS/blob/master/Images/complete_behavior_tree.PNG)
 
 ## Act
 The act phase is simply made up from the leaf nodes of the different behavior trees. In general, these were the tasks (with different parameters depending on the situation):
@@ -77,7 +73,7 @@ To see the full details about the implementation just download the source code. 
 ## Visibility algorithm
 Thanks to the perception system of UE4 was easy to determine if an NPC was seeing the player or not. However, as I wanted to compute a tactical pathfinding, I needed the exact visibility of the player (when was being seen by any NPC). To do this I implemented a visibility algorithm based on Ray tracing. This algorithm uses a very low number of Ray Tracer because it only does a RayTrace against the vertex of each obstacle, and then fills up the triangles made from these vertices (like Rasterization). Read more about this technique [here](http://www.redblobgames.com/articles/visibility/)
 
-![visibility_algorithm.png](https://s22.postimg.org/6tewtygcx/visibility.png)
+![Visibility calculated using custom algorithm](https://github.com/mtrebi/AI_FPS/blob/master/Images/visibility_algorithm.PNG)
 
 ## Tactical pathfinding
 Once I implemented the visibility algorithm I managed to modify the A star algorithm of UE4 to do the pathfinding operations. I included weights in the computation of the cost to include also the safety of the path (if the player was seeing that area or not).
@@ -103,7 +99,7 @@ To collect data from the environment I defined several custom tests to perform E
 - Avoid repeated positions tests
 
 Using one of these tests or combining many of them I made all the queries used in the game.
-![visibility test.png](https://s12.postimg.org/vca7d2ynx/visibility_test.png)
+![EQS query to calculate cover points.png](https://github.com/mtrebi/AI_FPS/blob/master/Images/eqs_cover_test.PNG)
 
 # Build instructions
 
