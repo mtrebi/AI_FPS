@@ -106,7 +106,8 @@ Using one of these tests or combining many of them I made all the queries used i
 ![visibility test.png](https://s12.postimg.org/vca7d2ynx/visibility_test.png)
 
 # Build instructions
-To set up the project just download or clone the source files and compile them using Visual Studio with the UE4 plugins. Then the UE4 will open with the __test map__. There you can check the behavior trees of the bots or simply add more bots, change their positions or attributes. Make sure that __UE4 version is 4.10__
+
+The project was done using Unreal Engine 4.10. However, as some people in Github noticed, there are some missing files in the source code. I accidentally copied the wrong version and deleted the working version when I uploaded the code to github. __This project can't be built__
 
 # References
 To do this project I looked at so many websites that makes no sense to post them all here. However, I think that is worth mention:
