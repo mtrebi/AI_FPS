@@ -156,7 +156,7 @@ bool AShooterAIController::HasWeaponLOSToEnemy(AActor* InEnemyActor, const bool 
 				ACharacter* HitChar = Cast<ACharacter>(HitActor);
 				if (HitChar != NULL)
 				{
-					AShooterPlayerState* HitPlayerState = Cast<AShooterPlayerState>(HitChar->PlayerState);
+					AShooterPlayerState* HitPlayerState = Cast<AShooterPlayerState>(HitChar->GetPlayerState());
 					AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(PlayerState);
 					if ((HitPlayerState != NULL) && (MyPlayerState != NULL))
 					{
