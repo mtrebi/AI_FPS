@@ -35,7 +35,7 @@ void UMaxSpreadSearchPositionsTest::RunTest(FEnvQueryInstance& QueryInstance) co
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 
 	APawn * Pawn = Cast<APawn>(QueryOwner);
 
@@ -57,7 +57,7 @@ void UMaxSpreadSearchPositionsTest::RunTest(FEnvQueryInstance& QueryInstance) co
 
 
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It) {
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 
 		float MinDistance = 9999;
 		float DistanceFromMyOldPos = 0;

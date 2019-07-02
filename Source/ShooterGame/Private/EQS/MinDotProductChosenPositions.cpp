@@ -32,7 +32,7 @@ void UMinDotProductChosenPositions::RunTest(FEnvQueryInstance& QueryInstance) co
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	
 	APawn * Pawn = Cast<APawn>(QueryOwner);
 
@@ -50,7 +50,7 @@ void UMinDotProductChosenPositions::RunTest(FEnvQueryInstance& QueryInstance) co
 	const FVector PlayerPosition = HelperMethods::GetPlayerPositionFromAI(World);
 
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It) {
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		FVector ItemToPlayer = PlayerPosition - ItemLocation;
 
 		ItemToPlayer.Normalize();

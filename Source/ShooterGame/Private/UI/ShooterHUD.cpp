@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "UI/ShooterHUD.h"
@@ -9,6 +9,7 @@
 #include "Weapons/ShooterDamageType.h"
 #include "Weapons/ShooterWeapon_Instant.h"
 #include "Online/ShooterPlayerState.h"
+#include "Misc/NetworkVersion.h"
 
 
 #define LOCTEXT_NAMESPACE "ShooterGame.HUD.Menu"
@@ -32,14 +33,20 @@ AShooterHUD::AShooterHUD(const FObjectInitializer& ObjectInitializer) : Super(Ob
 	static ConstructorHelpers::FObjectFinder<UTexture2D> HUDAssets02TextureOb(TEXT("/Game/UI/HUD/HUDAssets02"));
 	static ConstructorHelpers::FObjectFinder<UTexture2D> LowHealthOverlayTextureOb(TEXT("/Game/UI/HUD/LowHealthOverlay"));
 
-	static ConstructorHelpers::FObjectFinder<UFont> BigFontOb(TEXT("/Game/UI/HUD/Roboto51"));
-	static ConstructorHelpers::FObjectFinder<UFont> NormalFontOb(TEXT("/Game/UI/HUD/Roboto18"));
+	// Fonts are not included in dedicated server builds.
+	#if !UE_SERVER
+	{
+		static ConstructorHelpers::FObjectFinder<UFont> BigFontOb(TEXT("/Game/UI/HUD/Roboto51"));
+		static ConstructorHelpers::FObjectFinder<UFont> NormalFontOb(TEXT("/Game/UI/HUD/Roboto18"));
+		BigFont = BigFontOb.Object;
+		NormalFont = NormalFontOb.Object;
+	}
+	#endif //!UE_SERVER
+
 	HitNotifyTexture = HitTextureOb.Object;
 	HUDMainTexture = HUDMainTextureOb.Object;
 	HUDAssets02Texture = HUDAssets02TextureOb.Object;
 	LowHealthOverlayTexture = LowHealthOverlayTextureOb.Object;
-	BigFont = BigFontOb.Object;
-	NormalFont = NormalFontOb.Object;
 
 	HitNotifyIcon[EShooterHudPosition::Left] = UCanvas::MakeIcon(HitNotifyTexture,  158, 831, 585, 392);	
 	HitNotifyIcon[EShooterHudPosition::FrontLeft] = UCanvas::MakeIcon(HitNotifyTexture, 369, 434, 460, 378);	
@@ -328,7 +335,7 @@ void AShooterHUD::DrawHealth()
 
 void AShooterHUD::DrawMatchTimerAndPosition()
 {
-	AShooterGameState* const MyGameState = Cast<AShooterGameState>(GetWorld()->GameState);
+	AShooterGameState* const MyGameState = GetWorld()->GetGameState<AShooterGameState>();
 	Canvas->SetDrawColor(FColor::White);
 	const float TimerPosX = Canvas->ClipX - Canvas->OrgX - (TimePlaceBg.UL + Offset) * ScaleUI;
 	const float TimerPosY = Canvas->OrgY + Offset * ScaleUI;
@@ -542,17 +549,17 @@ void AShooterHUD::DrawHUD()
 			IOnlineSessionPtr SessionSubsystem = OnlineSubsystem->GetSessionInterface();
 			if(SessionSubsystem.IsValid())
 			{
-				FNamedOnlineSession * Session = SessionSubsystem->GetNamedSession(GameSessionName);
-				if(Session)
+				FNamedOnlineSession * Session = SessionSubsystem->GetNamedSession(NAME_GameSession);
+				if(Session && Session->SessionInfo.IsValid())
 				{
 					NetModeDesc += TEXT("\nSession: ");
-					NetModeDesc += Session->SessionInfo->GetSessionId().ToString();
+					NetModeDesc += Session->GetSessionIdStr();
 				}
 			}
 
 		}
 
-		NetModeDesc += FString::Printf( TEXT( "\nVersion: %i, %s, %s" ), GEngineNetVersion, UTF8_TO_TCHAR(__DATE__), UTF8_TO_TCHAR(__TIME__) );
+		NetModeDesc += FString::Printf( TEXT( "\nVersion: %i, %s, %s" ), FNetworkVersion::GetNetworkCompatibleChangelist(), UTF8_TO_TCHAR(__DATE__), UTF8_TO_TCHAR(__TIME__) );
 
 		DrawDebugInfoString(NetModeDesc, Canvas->OrgX + Offset*ScaleUI, Canvas->OrgY + 5*Offset*ScaleUI, true, true, HUDLight);
 	}
@@ -692,7 +699,7 @@ void AShooterHUD::DrawCrosshair()
 				}
 			}
 
-			if (Pawn->IsTargeting() && MyWeapon->UseLaserDot)
+			if (Pawn->IsTargeting() && MyWeapon && MyWeapon->UseLaserDot)
 			{
 				Canvas->SetDrawColor(255,0,0,192);
 				Canvas->DrawIcon(*CurrentCrosshair[EShooterCrosshairDirection::Center],
@@ -822,9 +829,9 @@ void AShooterHUD::ShowDeathMessage(class AShooterPlayerState* KillerPlayerState,
 	const int32 MaxDeathMessages = 5;
 	const float MessageDuration = 10.0f;
 
-	if (GetWorld()->GameState && GetWorld()->GameState->GameModeClass)
+	if (GetWorld()->GetGameState())
 	{
-		const AShooterGameMode* DefGame = GetWorld()->GameState->GameModeClass->GetDefaultObject<AShooterGameMode>();
+		const AShooterGameMode* DefGame = GetWorld()->GetGameState()->GetDefaultGameMode<AShooterGameMode>();
 		AShooterPlayerState* MyPlayerState = PlayerOwner ? Cast<AShooterPlayerState>(PlayerOwner->PlayerState) : NULL;
 
 		if (DefGame && KillerPlayerState && VictimPlayerState && MyPlayerState)
@@ -842,7 +849,7 @@ void AShooterHUD::ShowDeathMessage(class AShooterPlayerState* KillerPlayerState,
 			NewMessage.bKillerIsOwner = MyPlayerState == KillerPlayerState;
 			NewMessage.bVictimIsOwner = MyPlayerState == VictimPlayerState;
 
-			NewMessage.DamageType = Cast<const UShooterDamageType>(KillerDamageType);
+			NewMessage.DamageType = MakeWeakObjectPtr(const_cast<UShooterDamageType*>(Cast<const UShooterDamageType>(KillerDamageType)));
 			NewMessage.HideTime = GetWorld()->GetTimeSeconds() + MessageDuration;
 
 			DeathMessages.Add(NewMessage);
@@ -939,7 +946,7 @@ void AShooterHUD::OnPlayerTalkingStateChanged(TSharedRef<const FUniqueNetId> Tal
 {
 	if (bIsScoreBoardVisible)
 	{
-		ScoreboardWidget->StoreTalkingPlayerData(TalkingPlayerId->ToString(), bIsTalking);
+		ScoreboardWidget->StoreTalkingPlayerData(TalkingPlayerId.Get(), bIsTalking);
 	}
 }
 
@@ -1007,7 +1014,7 @@ bool AShooterHUD::ShowScoreboard(bool bEnable, bool bFocus)
 		.Padding(FMargin(50))
 		[
 			SAssignNew(ScoreboardWidget, SShooterScoreboardWidget)
-				.PCOwner(TWeakObjectPtr<APlayerController>(PlayerOwner))
+				.PCOwner(MakeWeakObjectPtr(PlayerOwner))
 				.MatchState(GetMatchState())
 		];
 

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "SShooterServerList.h"
@@ -19,6 +19,13 @@ void SShooterServerList::Construct(const FArguments& InArgs)
 	bLANMatchSearch = false;
 	StatusText = FText::GetEmpty();
 	BoxWidth = 125;
+	LastSearchTime = 0.0f;
+	
+#if PLATFORM_SWITCH
+	MinTimeBetweenSearches = 6.0;
+#else
+	MinTimeBetweenSearches = 0.0;
+#endif
 
 	ChildSlot
 	.VAlign(VAlign_Fill)
@@ -56,9 +63,11 @@ void SShooterServerList::Construct(const FArguments& InArgs)
 			.VAlign(VAlign_Center)
 			.HAlign(HAlign_Center)
 			[
-				SNew(STextBlock)
+				SNew(SRichTextBlock)
 				.Text(this, &SShooterServerList::GetBottomText)
 				.TextStyle(FShooterStyle::Get(), "ShooterGame.MenuServerListTextStyle")
+				.DecoratorStyleSet(&FShooterStyle::Get())
+				+ SRichTextBlock::ImageDecorator()
 			]
 		]
 		
@@ -107,6 +116,8 @@ void SShooterServerList::UpdateSearchStatus()
 						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS SQUARE TO TRY AGAIN");
 #elif PLATFORM_XBOXONE
 						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS X TO TRY AGAIN");
+#elif PLATFORM_SWITCH
+						StatusText = LOCTEXT("NoServersFound", "NO SERVERS FOUND, PRESS <img src=\"ShooterGame.Switch.Left\"/> TO TRY AGAIN");
 #else
 						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS SPACE TO TRY AGAIN");
 #endif
@@ -117,6 +128,8 @@ void SShooterServerList::UpdateSearchStatus()
 						StatusText = LOCTEXT("ServersRefresh","PRESS SQUARE TO REFRESH SERVER LIST");
 #elif PLATFORM_XBOXONE
 						StatusText = LOCTEXT("ServersRefresh","PRESS X TO REFRESH SERVER LIST");
+#elif PLATFORM_SWITCH
+						StatusText = LOCTEXT("ServersRefresh", "PRESS <img src=\"ShooterGame.Switch.Left\"/> TO REFRESH SERVER LIST");
 #else
 						StatusText = LOCTEXT("ServersRefresh","PRESS SPACE TO REFRESH SERVER LIST");
 #endif
@@ -185,17 +198,27 @@ void SShooterServerList::Tick( const FGeometry& AllottedGeometry, const double I
 }
 
 /** Starts searching for servers */
-void SShooterServerList::BeginServerSearch(bool bLANMatch, const FString& InMapFilterName)
+void SShooterServerList::BeginServerSearch(bool bLANMatch, bool bIsDedicatedServer, const FString& InMapFilterName)
 {
-	bLANMatchSearch = bLANMatch;
-	MapFilterName = InMapFilterName;
-	bSearchingForServers = true;
-	ServerList.Empty();
-
-	UShooterGameInstance* const GI = Cast<UShooterGameInstance>(PlayerOwner->GetGameInstance());
-	if (GI)
+	double CurrentTime = FApp::GetCurrentTime();
+	if (!bLANMatch && CurrentTime - LastSearchTime < MinTimeBetweenSearches)
 	{
-		GI->FindSessions(PlayerOwner.Get(), bLANMatchSearch);
+		OnServerSearchFinished();
+	}
+	else
+	{
+		bLANMatchSearch = bLANMatch;
+		bDedicatedServer = bIsDedicatedServer;
+		MapFilterName = InMapFilterName;
+		bSearchingForServers = true;
+		ServerList.Empty();
+		LastSearchTime = CurrentTime;
+
+		UShooterGameInstance* const GI = Cast<UShooterGameInstance>(PlayerOwner->GetGameInstance());
+		if (GI)
+		{
+			GI->FindSessions(PlayerOwner.Get(), bIsDedicatedServer, bLANMatchSearch);
+		}
 	}
 }
 
@@ -218,6 +241,7 @@ void SShooterServerList::UpdateServerList()
 			if (ServerList[i]->MapName != MapFilterName)
 			{
 				ServerList.RemoveAt(i);
+				i--;
 			}
 		}
 	}
@@ -318,7 +342,7 @@ FReply SShooterServerList::OnKeyDown(const FGeometry& MyGeometry, const FKeyEven
 		MoveSelection(1);
 		Result = FReply::Handled();
 	}
-	else if (Key == EKeys::Enter || Key == EKeys::Gamepad_FaceButton_Bottom)
+	else if (Key == EKeys::Enter || Key == EKeys::Virtual_Accept)
 	{
 		ConnectToServer();
 		Result = FReply::Handled();
@@ -327,7 +351,7 @@ FReply SShooterServerList::OnKeyDown(const FGeometry& MyGeometry, const FKeyEven
 	//hit space bar to search for servers again / refresh the list, only when not searching already
 	else if (Key == EKeys::SpaceBar || Key == EKeys::Gamepad_FaceButton_Left)
 	{
-		BeginServerSearch(bLANMatchSearch, MapFilterName);
+		BeginServerSearch(bLANMatchSearch, bDedicatedServer, MapFilterName);
 	}
 	return Result;
 }

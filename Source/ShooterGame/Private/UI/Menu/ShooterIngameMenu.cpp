@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterIngameMenu.h"
@@ -10,6 +10,13 @@
 #include "UI/ShooterHUD.h"
 
 #define LOCTEXT_NAMESPACE "ShooterGame.HUD.Menu"
+
+#if PLATFORM_SWITCH
+#	define FRIENDS_SUPPORTED 0
+#else
+#	define FRIENDS_SUPPORTED 1
+#endif
+
 
 void FShooterIngameMenu::Construct(ULocalPlayer* _PlayerOwner)
 {
@@ -31,7 +38,7 @@ void FShooterIngameMenu::Construct(ULocalPlayer* _PlayerOwner)
 	if (!GameMenuWidget.IsValid())
 	{
 		SAssignNew(GameMenuWidget, SShooterMenuWidget)
-			.PlayerOwner(TWeakObjectPtr<ULocalPlayer>(PlayerOwner))
+			.PlayerOwner(MakeWeakObjectPtr(PlayerOwner))
 			.Cursor(EMouseCursor::Default)
 			.IsGameMenu(true);			
 
@@ -52,7 +59,9 @@ void FShooterIngameMenu::Construct(ULocalPlayer* _PlayerOwner)
 
 		MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterOptions->CheatsItem.ToSharedRef());
 		MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterOptions->OptionsItem.ToSharedRef());
-		if (GameInstance && GameInstance->GetIsOnline())
+
+#if FRIENDS_SUPPORTED
+		if (GameInstance && GameInstance->GetOnlineMode() == EOnlineMode::Online)
 		{
 #if !PLATFORM_XBOXONE
 			ShooterFriends = MakeShareable(new FShooterFriends());
@@ -71,10 +80,11 @@ void FShooterIngameMenu::Construct(ULocalPlayer* _PlayerOwner)
 #endif		
 
 #if SHOOTER_CONSOLE_UI			
-			TSharedPtr<FShooterMenuItem> ShowInvitesItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Invite Players", "INVITE PLAYERS"));
+			TSharedPtr<FShooterMenuItem> ShowInvitesItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Invite Players", "INVITE PLAYERS (via System UI)"));
 			ShowInvitesItem->OnConfirmMenuItem.BindRaw(this, &FShooterIngameMenu::OnShowInviteUI);		
 #endif
 		}
+#endif
 
 		if (FSlateApplication::Get().SupportsSystemHelp())
 		{
@@ -209,6 +219,9 @@ void FShooterIngameMenu::ToggleGameMenu()
 			PCOwner->SetCinematicMode(true, false, false, true, true);
 
 			PCOwner->SetPause(true);
+
+			FInputModeGameAndUI InputMode;
+			PCOwner->SetInputMode(InputMode);
 		}
 	} 
 	else
@@ -225,6 +238,9 @@ void FShooterIngameMenu::ToggleGameMenu()
 			if( ( ShooterHUD != NULL ) && ( ShooterHUD->IsMatchOver() == false ) )
 			{
 				PCOwner->SetCinematicMode(false,false,false,true,true);
+
+				FInputModeGameOnly InputMode;
+				PCOwner->SetInputMode(InputMode);
 			}
 		}
 	}

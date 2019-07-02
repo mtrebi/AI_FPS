@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 #pragma once
 #include "SlateBasics.h"
 #include "SlateExtras.h"
@@ -88,6 +88,8 @@ public:
 	IOnlineFriendsPtr OnlineFriendsPtr;
 
 protected:
+	void OnFriendsUpdated(int32 UpdatedPlayerIndex, bool bWasSuccessful, const FString& FriendListName, const FString& ErrorString);
+
 	/** User settings pointer */
 	UShooterGameUserSettings* UserSettings;
 

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterImpactEffect.h"
@@ -34,7 +34,7 @@ void AShooterImpactEffect::PostInitializeComponents()
 		FRotator RandomDecalRotation = SurfaceHit.ImpactNormal.Rotation();
 		RandomDecalRotation.Roll = FMath::FRandRange(-180.0f, 180.0f);
 
-		UGameplayStatics::SpawnDecalAttached(DefaultDecal.DecalMaterial, FVector(DefaultDecal.DecalSize, DefaultDecal.DecalSize, 1.0f),
+		UGameplayStatics::SpawnDecalAttached(DefaultDecal.DecalMaterial, FVector(1.0f, DefaultDecal.DecalSize, DefaultDecal.DecalSize),
 			SurfaceHit.Component.Get(), SurfaceHit.BoneName,
 			SurfaceHit.ImpactPoint, RandomDecalRotation, EAttachLocation::KeepWorldPosition,
 			DefaultDecal.LifeSpan);

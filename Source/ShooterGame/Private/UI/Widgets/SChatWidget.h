@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -123,6 +123,9 @@ protected:
 
 	/** Style to use for this chat widget */
 	const struct FShooterChatStyle *ChatStyle;
+
+	/** Copy of the font used for chat, with the font fallback value modified */
+	FSlateFontInfo ChatFont;
 };
 
 

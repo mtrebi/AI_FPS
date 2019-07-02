@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "Player/ShooterPersistentUser.h"
@@ -14,6 +14,7 @@ void UShooterPersistentUser::SetToDefaults()
 {
 	bIsDirty = false;
 
+	bVibrationOpt = true;
 	bInvertedYAxis = false;
 	AimSensitivity = 1.0f;
 	Gamma = 2.2f;
@@ -110,14 +111,18 @@ UShooterPersistentUser* UShooterPersistentUser::LoadPersistentUser(FString SlotN
 	// first set of player signins can happen before the UWorld exists, which means no OSS, which means no user names, which means no slotnames.
 	// Persistent users aren't valid in this state.
 	if (SlotName.Len() > 0)
-	{	
-		Result = Cast<UShooterPersistentUser>(UGameplayStatics::LoadGameFromSlot(SlotName, UserIndex));
-		if (Result == NULL)
+	{
+		if (!GIsBuildMachine)
+		{
+			Result = Cast<UShooterPersistentUser>(UGameplayStatics::LoadGameFromSlot(SlotName, UserIndex));
+		}
+
+		if (Result == nullptr)
 		{
 			// if failed to load, create a new one
 			Result = Cast<UShooterPersistentUser>( UGameplayStatics::CreateSaveGameObject(UShooterPersistentUser::StaticClass()) );
 		}
-		check(Result != NULL);
+		check(Result != nullptr);
 	
 		Result->SlotName = SlotName;
 		Result->UserIndex = UserIndex;
@@ -200,6 +205,14 @@ void UShooterPersistentUser::TellInputAboutKeybindings()
 int32 UShooterPersistentUser::GetUserIndex() const
 {
 	return UserIndex;
+}
+
+void UShooterPersistentUser::SetVibration(bool bVibration)
+{
+	bIsDirty |= bVibrationOpt != bVibration;
+
+	bVibrationOpt = bVibration;
+
 }
 
 void UShooterPersistentUser::SetInvertedYAxis(bool bInvert)

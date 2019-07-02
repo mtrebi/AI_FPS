@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "SShooterLeaderboard.h"
@@ -7,6 +7,8 @@
 
 #if PLATFORM_XBOXONE
 #define INTERACTIVE_LEADERBOARD	1
+#else
+#define INTERACTIVE_LEADERBOARD	0
 #endif
 
 FLeaderboardRow::FLeaderboardRow(const FOnlineStatsRow& Row)
@@ -74,6 +76,32 @@ void SShooterLeaderboard::Construct(const FArguments& InArgs)
 			.Visibility(this, &SShooterLeaderboard::GetProfileUIVisibility)
 		]
 	];
+}
+
+void SShooterLeaderboard::ReadStatsLoginRequired()
+{
+	if (!OnLoginCompleteDelegateHandle.IsValid())
+	{
+		IOnlineSubsystem* const OnlineSub = IOnlineSubsystem::Get();
+		if (OnlineSub)
+		{
+			IOnlineIdentityPtr Identity = OnlineSub->GetIdentityInterface();
+			if (Identity.IsValid())
+			{
+				OnLoginCompleteDelegateHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateRaw(this, &SShooterLeaderboard::OnLoginCompleteReadStats));
+				Identity->Login(0, FOnlineAccountCredentials());
+			}
+		}
+	}
+}
+
+void SShooterLeaderboard::OnLoginCompleteReadStats(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
+{
+	IOnlineSubsystem::Get()->GetIdentityInterface()->ClearOnLoginCompleteDelegate_Handle(LocalUserNum, OnLoginCompleteDelegateHandle);
+	if (bWasSuccessful)
+	{
+		ReadStats();
+	}
 }
 
 /** Starts reading leaderboards for the game */
@@ -171,12 +199,12 @@ bool SShooterLeaderboard::ProfileUIOpened() const
 	if( IsPlayerSelectedAndValid() )
 	{
 		check( PlayerOwner.IsValid() );
-		const TSharedPtr<const FUniqueNetId> OwnerNetId = PlayerOwner->GetPreferredUniqueNetId();
+		FUniqueNetIdRepl OwnerNetId = PlayerOwner->GetPreferredUniqueNetId();
 		check( OwnerNetId.IsValid() );
 
 		const TSharedPtr<const FUniqueNetId>& PlayerId = SelectedItem->PlayerId;
 		check( PlayerId.IsValid() );
-		return ShooterUIHelpers::Get().ProfileOpenedUI(*OwnerNetId.Get(), *PlayerId.Get(), NULL);
+		return ShooterUIHelpers::Get().ProfileOpenedUI(*OwnerNetId, *PlayerId.Get(), NULL);
 	}
 	return false;
 }
@@ -205,7 +233,7 @@ FReply SShooterLeaderboard::OnKeyDown(const FGeometry& MyGeometry, const FKeyEve
 		MoveSelection(1);
 		Result = FReply::Handled();
 	}
-	else if (Key == EKeys::Escape || Key == EKeys::Gamepad_FaceButton_Right || Key == EKeys::Gamepad_Special_Left)
+	else if (Key == EKeys::Escape || Key == EKeys::Virtual_Back || Key == EKeys::Gamepad_Special_Left)
 	{
 		if (bReadingStats)
 		{
@@ -213,7 +241,7 @@ FReply SShooterLeaderboard::OnKeyDown(const FGeometry& MyGeometry, const FKeyEve
 			bReadingStats = false;
 		}
 	}
-	else if (Key == EKeys::Enter || Key == EKeys::Gamepad_FaceButton_Bottom)
+	else if (Key == EKeys::Enter || Key == EKeys::Virtual_Accept)
 	{
 		// Open the profile UI of the selected item
 		ProfileUIOpened();

@@ -2,7 +2,7 @@
 
 
 #include "ShooterGame.h"
-#include "AI/Navigation/NavigationSystem.h"
+#include "NavigationSystem.h"
 #include "AI/Navigation/NavAgentInterface.h"
 #include "Public/Navigation/MyNavigationQueryFilter.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
@@ -41,7 +41,7 @@ void UPathfiningTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	float MinThresholdValue = FloatValueMin.GetValue();
 	float MaxThresholdValue = FloatValueMax.GetValue();
 
-	UNavigationSystem* NavSys = QueryInstance.World->GetNavigationSystem();
+	UNavigationSystemV1* NavSys = Cast<UNavigationSystemV1>(GetWorld()->GetNavigationSystem());
 	if (NavSys == nullptr)
 	{
 		return;
@@ -181,7 +181,7 @@ void UPathfiningTest::PostLoad()
 	SetWorkOnFloatValues(TestMode != EEnvTestPathfinding::PathExist);
 }
 
-bool UPathfiningTest::TestPathFrom(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystem& NavSys, const UObject* PathOwner) const
+bool UPathfiningTest::TestPathFrom(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystemV1& NavSys, const UObject* PathOwner) const
 {
 	FPathFindingQuery Query(PathOwner, NavData, ItemPos, ContextPos, UNavigationQueryFilter::GetQueryFilter(NavData, FilterClass));
 	Query.SetAllowPartialPaths(false);
@@ -190,11 +190,11 @@ bool UPathfiningTest::TestPathFrom(const FVector& ItemPos, const FVector& Contex
 	return bPathExists;
 }
 
-bool UPathfiningTest::TestPathTo(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystem& NavSys, const UObject* PathOwner) const
+bool UPathfiningTest::TestPathTo(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystemV1& NavSys, const UObject* PathOwner) const
 {
 	const AMyRecastNavMesh* MyNavData = Cast<AMyRecastNavMesh>(&NavData);
 	const FRecastQueryFilter_Example* MyFRecastQueryFilter = MyNavData->GetCustomFilter();
-	
+
 	FPathFindingQuery Query(PathOwner, NavData, ContextPos, ItemPos, UNavigationQueryFilter::GetQueryFilter(NavData, FilterClass));
 	//FPathFindingQuery Query(PathOwner, NavData, ContextPos, ItemPos, MyFRecastQueryFilter);
 	Query.SetAllowPartialPaths(false);
@@ -203,7 +203,7 @@ bool UPathfiningTest::TestPathTo(const FVector& ItemPos, const FVector& ContextP
 	return bPathExists;
 }
 
-float UPathfiningTest::FindPathCostFrom(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystem& NavSys, const UObject* PathOwner) const
+float UPathfiningTest::FindPathCostFrom(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystemV1& NavSys, const UObject* PathOwner) const
 {
 	FPathFindingQuery Query(PathOwner, NavData, ItemPos, ContextPos, UNavigationQueryFilter::GetQueryFilter(NavData, FilterClass));
 	Query.SetAllowPartialPaths(false);
@@ -212,9 +212,10 @@ float UPathfiningTest::FindPathCostFrom(const FVector& ItemPos, const FVector& C
 	return (Result.IsSuccessful()) ? Result.Path->GetCost() : BIG_NUMBER;
 }
 
-float UPathfiningTest::FindPathCostTo(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystem& NavSys, const UObject* PathOwner) const
+float UPathfiningTest::FindPathCostTo(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystemV1& NavSys, const UObject* PathOwner) const
 {
-	TSharedPtr<const FNavigationQueryFilter> QueryFilter = UMyNavigationQueryFilter::GetQueryFilter(NavData, FilterClass);
+	TSharedPtr<const FNavigationQueryFilter, ESPMode::ThreadSafe> QueryFilter = UMyNavigationQueryFilter::GetQueryFilter(NavData, FilterClass);
+	//TSharedPtr<const FNavigationQueryFilter> QueryFilter = UMyNavigationQueryFilter::GetQueryFilter(NavData, FilterClass);
 	FPathFindingQuery Query(PathOwner, NavData, ContextPos, ItemPos, QueryFilter);
 	Query.SetAllowPartialPaths(false);
 
@@ -222,7 +223,7 @@ float UPathfiningTest::FindPathCostTo(const FVector& ItemPos, const FVector& Con
 	return (Result.IsSuccessful()) ? Result.Path->GetCost() : BIG_NUMBER;
 }
 
-float UPathfiningTest::FindPathLengthFrom(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystem& NavSys, const UObject* PathOwner) const
+float UPathfiningTest::FindPathLengthFrom(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystemV1& NavSys, const UObject* PathOwner) const
 {
 	FPathFindingQuery Query(PathOwner, NavData, ItemPos, ContextPos, UNavigationQueryFilter::GetQueryFilter(NavData, FilterClass));
 	Query.SetAllowPartialPaths(false);
@@ -231,7 +232,7 @@ float UPathfiningTest::FindPathLengthFrom(const FVector& ItemPos, const FVector&
 	return (Result.IsSuccessful()) ? Result.Path->GetLength() : BIG_NUMBER;
 }
 
-float UPathfiningTest::FindPathLengthTo(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystem& NavSys, const UObject* PathOwner) const
+float UPathfiningTest::FindPathLengthTo(const FVector& ItemPos, const FVector& ContextPos, EPathFindingMode::Type Mode, const ANavigationData& NavData, UNavigationSystemV1& NavSys, const UObject* PathOwner) const
 {
 	FPathFindingQuery Query(PathOwner, NavData, ContextPos, ItemPos, UNavigationQueryFilter::GetQueryFilter(NavData, FilterClass));
 	Query.SetAllowPartialPaths(false);
@@ -240,7 +241,7 @@ float UPathfiningTest::FindPathLengthTo(const FVector& ItemPos, const FVector& C
 	return (Result.IsSuccessful()) ? Result.Path->GetLength() : BIG_NUMBER;
 }
 
-ANavigationData* UPathfiningTest::FindNavigationData(UNavigationSystem& NavSys, UObject* Owner) const
+ANavigationData* UPathfiningTest::FindNavigationData(UNavigationSystemV1& NavSys, UObject* Owner) const
 {
 	INavAgentInterface* NavAgent = Cast<INavAgentInterface>(Owner);
 	if (NavAgent)
@@ -248,9 +249,7 @@ ANavigationData* UPathfiningTest::FindNavigationData(UNavigationSystem& NavSys, 
 		return NavSys.GetNavDataForProps(NavAgent->GetNavAgentPropertiesRef());
 	}
 
-	return NavSys.GetMainNavData(FNavigationSystem::DontCreate);
+	return NavSys.GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
 }
 
 #undef LOCTEXT_NAMESPACE
-
-

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 
 #include "ShooterGame.h"
@@ -6,20 +6,21 @@
 
 AShooterSpectatorPawn::AShooterSpectatorPawn(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
-{	
+{
+	bReplicates = false;
 }
 
-void AShooterSpectatorPawn::SetupPlayerInputComponent(UInputComponent* InputComponent)
+void AShooterSpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	check(InputComponent);
+	check(PlayerInputComponent);
 	
-	InputComponent->BindAxis("MoveForward", this, &ADefaultPawn::MoveForward);
-	InputComponent->BindAxis("MoveRight", this, &ADefaultPawn::MoveRight);
-	InputComponent->BindAxis("MoveUp", this, &ADefaultPawn::MoveUp_World);
-	InputComponent->BindAxis("Turn", this, &ADefaultPawn::AddControllerYawInput);
-	InputComponent->BindAxis("TurnRate", this, &ADefaultPawn::TurnAtRate);
-	InputComponent->BindAxis("LookUp", this, &ADefaultPawn::AddControllerPitchInput);
-	InputComponent->BindAxis("LookUpRate", this, &AShooterSpectatorPawn::LookUpAtRate);
+	PlayerInputComponent->BindAxis("MoveForward", this, &ADefaultPawn::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &ADefaultPawn::MoveRight);
+	PlayerInputComponent->BindAxis("MoveUp", this, &ADefaultPawn::MoveUp_World);
+	PlayerInputComponent->BindAxis("Turn", this, &ADefaultPawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("TurnRate", this, &ADefaultPawn::TurnAtRate);
+	PlayerInputComponent->BindAxis("LookUp", this, &ADefaultPawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUpRate", this, &AShooterSpectatorPawn::LookUpAtRate);
 }
 
 void AShooterSpectatorPawn::LookUpAtRate(float Val)

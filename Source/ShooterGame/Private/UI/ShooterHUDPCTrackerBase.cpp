@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterHUDPCTrackerBase.h"
@@ -16,7 +16,7 @@ TWeakObjectPtr<AShooterPlayerController> ShooterHUDPCTrackerBase::GetPlayerContr
 	{
 		APlayerController* PC = Context.GetPlayerController();
 		AShooterPlayerController* ShooterPC = Cast<AShooterPlayerController>(PC);
-		return TWeakObjectPtr<AShooterPlayerController>(ShooterPC);
+		return MakeWeakObjectPtr(ShooterPC);
 	}
 	else
 	{
@@ -41,7 +41,7 @@ AShooterGameState* ShooterHUDPCTrackerBase::GetGameState() const
 {
 	if ( ensureMsgf( Context.IsValid(), TEXT("Game context must be initialized!") ) )
 	{
-		return Cast<AShooterGameState>(Context.GetWorld()->GameState);
+		return Context.GetWorld()->GetGameState<AShooterGameState>();
 	}
 	else
 	{

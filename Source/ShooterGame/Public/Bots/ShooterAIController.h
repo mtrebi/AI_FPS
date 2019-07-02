@@ -59,13 +59,17 @@ private:
 public:
 	// Begin AController interface
 	virtual void GameHasEnded(class AActor* EndGameFocus = NULL, bool bIsWinner = false) override;
-	virtual void Possess(class APawn* InPawn) override;
+	virtual void OnPossess(class APawn* InPawn) override;
 	virtual void BeginInactiveState() override;
 	// End APlayerController interface
 
 	void Respawn();
 
 	void CheckAmmo(const class AShooterWeapon* CurrentWeapon);
+
+	void SetEnemy(class APawn* InPawn);
+
+	class AShooterCharacter* GetEnemy() const;
 
 	bool HasWeaponLOSToEnemy(AActor* InEnemyActor, const bool bAnyEnemy) const;
 
@@ -209,7 +213,7 @@ public:
 
 	/************************* RUNTIME UPDATES **************************/
 	UFUNCTION(BlueprintCallable, Category = "Update")
-	void OnPerceptionUpdated(TArray<AActor*> testActors);
+	void OnPerceptionUpdated(const TArray<AActor*>& testActors);
 	
 	UFUNCTION(BlueprintCallable, Category = "Update")
 	void UpdateData(const float DeltaSeconds);

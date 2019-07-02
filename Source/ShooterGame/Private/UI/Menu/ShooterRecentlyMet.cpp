@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterRecentlyMet.h"
@@ -79,7 +79,7 @@ void FShooterRecentlyMet::UpdateRecentlyMet(int32 NewOwnerIndex)
 	MenuHelper::ClearSubMenu(RecentlyMetItem);
 	MaxRecentlyMetIndex = 0;
 
-	AShooterGameState* const MyGameState = Cast<AShooterGameState>(PlayerOwner->GetWorld()->GameState);
+	AShooterGameState* const MyGameState = PlayerOwner->GetWorld()->GetGameState<AShooterGameState>();
 	if (MyGameState != nullptr)
 	{
 		PlayerArray = MyGameState->PlayerArray;
@@ -133,7 +133,7 @@ void FShooterRecentlyMet::ViewSelectedUsersProfile()
 		auto ExternalUI = Online::GetExternalUIInterface();
 		if (ExternalUI.IsValid() && Requestor.IsValid() && Requestee.IsValid())
 		{
-			ExternalUI->ShowProfileUI(*Requestor, *Requestee, IOnlineExternalUI::FOnProfileUIClosedDelegate());
+			ExternalUI->ShowProfileUI(*Requestor, *Requestee, FOnProfileUIClosedDelegate());
 		}
 	}
 }

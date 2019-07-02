@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -13,7 +13,8 @@ public:
 	SLATE_BEGIN_ARGS(SShooterMenuWidget)
 	: _PlayerOwner()
 	, _IsGameMenu(false)
-	{}
+	{
+	}
 
 	/** weak pointer to the parent HUD base */
 	SLATE_ARGUMENT(TWeakObjectPtr<ULocalPlayer>, PlayerOwner)
@@ -174,7 +175,7 @@ private:
 	bool ProfileUISwap(const int ControllerIndex) const; 
 
 	/** delegate for if the profile is swapped */
-	void HandleProfileUISwapClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex);
+	void HandleProfileUISwapClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex, const FOnlineError& Error = FOnlineError());
 
 	/** this function starts the entire fade in process */
 	void FadeIn();

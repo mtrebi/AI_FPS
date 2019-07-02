@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -12,15 +12,12 @@ struct FShooterGameLoadingScreenBrush : public FSlateDynamicImageBrush, public F
 	FShooterGameLoadingScreenBrush( const FName InTextureName, const FVector2D& InImageSize )
 		: FSlateDynamicImageBrush( InTextureName, InImageSize )
 	{
-		ResourceObject = LoadObject<UObject>( NULL, *InTextureName.ToString() );
+		SetResourceObject(LoadObject<UObject>( nullptr, *InTextureName.ToString() ));
 	}
 
 	virtual void AddReferencedObjects(FReferenceCollector& Collector)
 	{
-		if( ResourceObject )
-		{
-			Collector.AddReferencedObject(ResourceObject);
-		}
+		FSlateBrush::AddReferencedObjects(Collector);
 	}
 };
 
@@ -69,6 +66,10 @@ public:
 
 	//FTicker Funcs
 	virtual void Tick(float DeltaSeconds) override;	
+
+	virtual	void BeginDestroy() override;
+	virtual void DetachViewportClient() override;
+	void ReleaseSlateResources();
 
 #if WITH_EDITOR
 	virtual void DrawTransition(class UCanvas* Canvas) override;

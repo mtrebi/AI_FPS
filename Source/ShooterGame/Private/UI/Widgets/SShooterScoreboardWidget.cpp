@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "SShooterScoreboardWidget.h"
@@ -12,6 +12,8 @@
 // @todo: prevent interaction on PC for now (see OnFocusReceived for reasons)
 #if PLATFORM_XBOXONE
 #define INTERACTIVE_SCOREBOARD	1
+#else
+#define INTERACTIVE_SCOREBOARD	0
 #endif
 
 #define	NORM_PADDING	(FMargin(5))
@@ -119,13 +121,13 @@ void SShooterScoreboardWidget::Construct(const FArguments& InArgs)
 	);
 }
 
-void SShooterScoreboardWidget::StoreTalkingPlayerData(FString TalkingPlayerName, bool bIsTalking)
+void SShooterScoreboardWidget::StoreTalkingPlayerData(const FUniqueNetId& PlayerId, bool bIsTalking)
 {
 	bool bIsFound = false;
 	int32 FoundIndex = -1;
 	for (int32 i = 0; i < PlayersTalkingThisFrame.Num(); ++i)
 	{
-		if (PlayersTalkingThisFrame[i].Key == TalkingPlayerName)
+		if (PlayersTalkingThisFrame[i].Key.Get() == PlayerId)
 		{
 			FoundIndex = i;
 			bIsFound = true;
@@ -141,7 +143,7 @@ void SShooterScoreboardWidget::StoreTalkingPlayerData(FString TalkingPlayerName,
 	}
 	else
 	{
-		PlayersTalkingThisFrame.Add(TPairInitializer<FString, bool>(TalkingPlayerName, bIsTalking));
+		PlayersTalkingThisFrame.Emplace(PlayerId.AsShared(), bIsTalking);
 	}
 }
 
@@ -149,7 +151,7 @@ FText SShooterScoreboardWidget::GetMatchRestartText() const
 {
 	if (PCOwner.IsValid() && (PCOwner->GetWorld() != NULL ))
 	{
-		AShooterGameState* const GameState = Cast<AShooterGameState>(PCOwner->GetWorld()->GameState);
+		AShooterGameState* const GameState = PCOwner->GetWorld()->GetGameState<AShooterGameState>();
 		if (GameState)
 		{
 			if (GameState->RemainingTime > 0)
@@ -263,7 +265,7 @@ void SShooterScoreboardWidget::UpdatePlayerStateMaps()
 {
 	if (PCOwner.IsValid())
 	{
-		AShooterGameState* const GameState = Cast<AShooterGameState>(PCOwner->GetWorld()->GameState);
+		AShooterGameState* const GameState = PCOwner->GetWorld()->GetGameState<AShooterGameState>();
 		if (GameState)
 		{
 			bool bRequiresWidgetUpdate = false;
@@ -338,7 +340,7 @@ FReply SShooterScoreboardWidget::OnKeyDown(const FGeometry& MyGeometry, const FK
 			OnSelectedPlayerNext();
 			Result = FReply::Handled();
 		}
-		else if (Key == EKeys::Enter || Key == EKeys::Gamepad_FaceButton_Bottom)
+		else if (Key == EKeys::Enter || Key == EKeys::Virtual_Accept)
 		{
 			ProfileUIOpened();
 			Result = FReply::Handled();
@@ -576,10 +578,9 @@ EVisibility SShooterScoreboardWidget::SpeakerIconVisibility(const FTeamPlayer Te
 	AShooterPlayerState* PlayerState = GetSortedPlayerState(TeamPlayer);
 	if (PlayerState)
 	{
-		FString PlayerName = PlayerState->GetShortPlayerName();
 		for (int32 i = 0; i < PlayersTalkingThisFrame.Num(); ++i)
 		{
-			if (PlayerName == PlayersTalkingThisFrame[i].Key && PlayersTalkingThisFrame[i].Value)
+			if (PlayerState->UniqueId == PlayersTalkingThisFrame[i].Key && PlayersTalkingThisFrame[i].Value)
 			{
 				return EVisibility::Visible;
 			}
@@ -608,6 +609,13 @@ FText SShooterScoreboardWidget::GetPlayerName(const FTeamPlayer TeamPlayer) cons
 	}
 
 	return FText::GetEmpty();
+}
+
+bool SShooterScoreboardWidget::ShouldPlayerBeDisplayed(const FTeamPlayer TeamPlayer) const
+{
+	const AShooterPlayerState* PlayerState = GetSortedPlayerState(TeamPlayer);
+	
+	return PlayerState != nullptr && !PlayerState->bOnlySpectator;
 }
 
 FSlateColor SShooterScoreboardWidget::GetPlayerColor(const FTeamPlayer TeamPlayer) const
@@ -746,10 +754,15 @@ TSharedRef<SWidget> SShooterScoreboardWidget::MakePlayerRows(uint8 TeamNum) cons
 
 	for (int32 PlayerIndex=0; PlayerIndex < PlayerStateMaps[TeamNum].Num(); PlayerIndex++ )
 	{
-		PlayerRows->AddSlot() .AutoHeight()
-		[
-			MakePlayerRow(FTeamPlayer(TeamNum, PlayerIndex))
-		];
+		FTeamPlayer TeamPlayer(TeamNum, PlayerIndex);
+
+		if (ShouldPlayerBeDisplayed(TeamPlayer))
+		{
+			PlayerRows->AddSlot().AutoHeight()
+				[
+					MakePlayerRow(TeamPlayer)
+				];
+		}
 	}
 
 	return PlayerRows;

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "SShooterDemoHUD.h"
@@ -75,7 +75,7 @@ int32 SShooterReplayTimeline::OnPaint(const FPaintArgs& Args, const FGeometry& A
 	if ((ImageBrush != nullptr) && (ImageBrush->DrawAs != ESlateBrushDrawType::NoDrawType) && DemoDriver.IsValid())
 	{
 		const bool bIsEnabled = ShouldBeEnabled(bParentEnabled);
-		const uint32 DrawEffects = bIsEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+		const ESlateDrawEffect DrawEffects = bIsEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
 
 		const FLinearColor FinalColorAndOpacity( InWidgetStyle.GetColorAndOpacityTint() * ColorAndOpacity.Get() * ImageBrush->GetTint( InWidgetStyle ) );
 
@@ -96,7 +96,6 @@ int32 SShooterReplayTimeline::OnPaint(const FPaintArgs& Args, const FGeometry& A
 			IndicatorLayerId,
 			AllottedGeometry.ToPaintGeometry(Offset, ImageBrush->ImageSize),
 			ImageBrush,
-			MyClippingRect,
 			DrawEffects,
 			FinalColorAndOpacity
 		);
@@ -193,6 +192,7 @@ void SShooterDemoHUD::Construct(const FArguments& InArgs)
 			.AutoHeight()
 			[
 				SNew(SCheckBox)
+				.IsFocusable(false)
 				.Style(FCoreStyle::Get(), "ToggleButtonCheckbox")
 				.IsChecked(this, &SShooterDemoHUD::IsPauseChecked)
 				.OnCheckStateChanged(this, &SShooterDemoHUD::OnPauseCheckStateChanged)
@@ -221,7 +221,7 @@ FText SShooterDemoHUD::GetCurrentReplayTime() const
 		return FText::GetEmpty();
 	}
 
-	return FText::AsTimespan(FTimespan(0, 0, static_cast<int32>(DemoDriver->DemoCurrentTime)));
+	return FText::AsTimespan(FTimespan::FromSeconds(DemoDriver->DemoCurrentTime));
 }
 
 FText SShooterDemoHUD::GetTotalReplayTime() const
@@ -238,7 +238,7 @@ FText SShooterDemoHUD::GetTotalReplayTime() const
 		return FText::GetEmpty();
 	}
 
-	return FText::AsTimespan(FTimespan(0, 0, static_cast<int32>(DemoDriver->DemoTotalTime)));
+	return FText::AsTimespan(FTimespan::FromSeconds(DemoDriver->DemoTotalTime));
 }
 
 FText SShooterDemoHUD::GetPlaybackSpeed() const

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "SChatWidget.h"
@@ -24,6 +24,12 @@ void SChatWidget::Construct(const FArguments& InArgs, const FLocalPlayerContext&
 
 	//some constant values
 	const int32 PaddingValue = 2;
+
+	// Copy the font we'll be using for chat, and limit the font fallback to localized only, for performance reasons
+	ChatFont = FShooterStyle::Get().GetFontStyle("ShooterGame.ChatFont");
+
+	ChatFont.FontFallback = EFontFallback::FF_LocalizedFallback;
+
 
 	// Initialize Menu
 	ChildSlot
@@ -64,7 +70,7 @@ void SChatWidget::Construct(const FArguments& InArgs, const FLocalPlayerContext&
 				.MinDesiredWidth(CHAT_BOX_WIDTH)
 				.ClearKeyboardFocusOnCommit(false)
 				.HintText(NSLOCTEXT("ChatWidget", "SaySomething", "Say Something..."))
-				.Font(FShooterStyle::Get().GetFontStyle("ShooterGame.ChatFont"))
+				.Font(ChatFont)
 				.Style(&ChatStyle->TextEntryStyle)
 			]
 		]
@@ -227,7 +233,7 @@ TSharedRef<ITableRow> SChatWidget::GenerateChatRow(TSharedPtr<FChatLine> ChatLin
 		[
 			SNew(STextBlock)
 			.Text(ChatLine->ChatString)
-			.Font(FShooterStyle::Get().GetFontStyle("ShooterGame.ChatFont"))
+			.Font(ChatFont)
 			.ColorAndOpacity(this, &SChatWidget::GetChatLineColor)
 			.WrapTextAt(CHAT_BOX_WIDTH - CHAT_BOX_PADDING)
 		];

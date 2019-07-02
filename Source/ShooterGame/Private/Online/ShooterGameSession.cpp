@@ -1,8 +1,9 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterGameSession.h"
 #include "ShooterOnlineGameSettings.h"
+#include "OnlineSubsystemSessionSettings.h"
 
 namespace
 {
@@ -30,7 +31,7 @@ AShooterGameSession::AShooterGameSession(const FObjectInitializer& ObjectInitial
  * @param SessionName the name of the session this callback is for
  * @param bWasSuccessful true if the async action completed without error, false if there was an error
  */
-void AShooterGameSession::OnStartOnlineGameComplete(FName SessionName, bool bWasSuccessful)
+void AShooterGameSession::OnStartOnlineGameComplete(FName InSessionName, bool bWasSuccessful)
 {
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
@@ -64,11 +65,11 @@ void AShooterGameSession::HandleMatchHasStarted()
 	if (OnlineSub)
 	{
 		IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
-		if (Sessions.IsValid())
+		if (Sessions.IsValid() && (Sessions->GetNamedSession(NAME_GameSession) != nullptr))
 		{
-			UE_LOG(LogOnlineGame, Log, TEXT("Starting session %s on server"), *GameSessionName.ToString());
+			UE_LOG(LogOnlineGame, Log, TEXT("Starting session %s on server"), *FName(NAME_GameSession).ToString());
 			OnStartSessionCompleteDelegateHandle = Sessions->AddOnStartSessionCompleteDelegate_Handle(OnStartSessionCompleteDelegate);
-			Sessions->StartSession(GameSessionName);
+			Sessions->StartSession(NAME_GameSession);
 		}
 	}
 }
@@ -79,12 +80,12 @@ void AShooterGameSession::HandleMatchHasStarted()
  */
 void AShooterGameSession::HandleMatchHasEnded()
 {
-	// start online game locally and wait for completion
+	// end online game locally 
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
 	{
 		IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
-		if (Sessions.IsValid())
+		if (Sessions.IsValid() && (Sessions->GetNamedSession(NAME_GameSession) != nullptr))
 		{
 			// tell the clients to end
 			for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -97,8 +98,8 @@ void AShooterGameSession::HandleMatchHasEnded()
 			}
 
 			// server is handled here
-			UE_LOG(LogOnlineGame, Log, TEXT("Ending session %s on server"), *GameSessionName.ToString() );
-			Sessions->EndSession(GameSessionName);
+			UE_LOG(LogOnlineGame, Log, TEXT("Ending session %s on server"), *FName(NAME_GameSession).ToString() );
+			Sessions->EndSession(NAME_GameSession);
 		}
 	}
 }
@@ -116,8 +117,8 @@ bool AShooterGameSession::IsBusy() const
 		IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
 		if (Sessions.IsValid())
 		{
-			EOnlineSessionState::Type GameSessionState = Sessions->GetSessionState(GameSessionName);
-			EOnlineSessionState::Type PartySessionState = Sessions->GetSessionState(PartySessionName);
+			EOnlineSessionState::Type GameSessionState = Sessions->GetSessionState(NAME_GameSession);
+			EOnlineSessionState::Type PartySessionState = Sessions->GetSessionState(NAME_PartySession);
 			if (GameSessionState != EOnlineSessionState::NoSession || PartySessionState != EOnlineSessionState::NoSession)
 			{
 				return true;
@@ -163,9 +164,9 @@ const TArray<FOnlineSessionSearchResult> & AShooterGameSession::GetSearchResults
  * @param SessionName the name of the session this callback is for
  * @param bWasSuccessful true if the async action completed without error, false if there was an error
  */
-void AShooterGameSession::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
+void AShooterGameSession::OnCreateSessionComplete(FName InSessionName, bool bWasSuccessful)
 {
-	UE_LOG(LogOnlineGame, Verbose, TEXT("OnCreateSessionComplete %s bSuccess: %d"), *SessionName.ToString(), bWasSuccessful);
+	UE_LOG(LogOnlineGame, Verbose, TEXT("OnCreateSessionComplete %s bSuccess: %d"), *InSessionName.ToString(), bWasSuccessful);
 
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
@@ -174,7 +175,7 @@ void AShooterGameSession::OnCreateSessionComplete(FName SessionName, bool bWasSu
 		Sessions->ClearOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteDelegateHandle);
 	}
 
-	OnCreatePresenceSessionComplete().Broadcast(SessionName, bWasSuccessful);	
+	OnCreatePresenceSessionComplete().Broadcast(InSessionName, bWasSuccessful);	
 }
 
 /**
@@ -183,9 +184,9 @@ void AShooterGameSession::OnCreateSessionComplete(FName SessionName, bool bWasSu
  * @param SessionName the name of the session this callback is for
  * @param bWasSuccessful true if the async action completed without error, false if there was an error
  */
-void AShooterGameSession::OnDestroySessionComplete(FName SessionName, bool bWasSuccessful)
+void AShooterGameSession::OnDestroySessionComplete(FName InSessionName, bool bWasSuccessful)
 {
-	UE_LOG(LogOnlineGame, Verbose, TEXT("OnDestroySessionComplete %s bSuccess: %d"), *SessionName.ToString(), bWasSuccessful);
+	UE_LOG(LogOnlineGame, Verbose, TEXT("OnDestroySessionComplete %s bSuccess: %d"), *InSessionName.ToString(), bWasSuccessful);
 
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
@@ -196,12 +197,12 @@ void AShooterGameSession::OnDestroySessionComplete(FName SessionName, bool bWasS
 	}
 }
 
-bool AShooterGameSession::HostSession(TSharedPtr<const FUniqueNetId> UserId, FName SessionName, const FString& GameType, const FString& MapName, bool bIsLAN, bool bIsPresence, int32 MaxNumPlayers)
+bool AShooterGameSession::HostSession(TSharedPtr<const FUniqueNetId> UserId, FName InSessionName, const FString& GameType, const FString& MapName, bool bIsLAN, bool bIsPresence, int32 MaxNumPlayers)
 {
 	IOnlineSubsystem* const OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
 	{
-		CurrentSessionParams.SessionName = SessionName;
+		CurrentSessionParams.SessionName = InSessionName;
 		CurrentSessionParams.bIsLAN = bIsLAN;
 		CurrentSessionParams.bIsPresence = bIsPresence;
 		CurrentSessionParams.UserId = UserId;
@@ -216,22 +217,59 @@ bool AShooterGameSession::HostSession(TSharedPtr<const FUniqueNetId> UserId, FNa
 			HostSettings->Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
 			HostSettings->Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
 			HostSettings->Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
+
+#if !PLATFORM_SWITCH
+			// On Switch, we don't have room for this in the session data (and it's not used anyway when searching), so there's no need to add it.
+			// Can be readded if the buffer size increases.
 			HostSettings->Set(SEARCH_KEYWORDS, CustomMatchKeyword, EOnlineDataAdvertisementType::ViaOnlineService);
+#endif
 
 			OnCreateSessionCompleteDelegateHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteDelegate);
 			return Sessions->CreateSession(*CurrentSessionParams.UserId, CurrentSessionParams.SessionName, *HostSettings);
+		}
+		else
+		{
+			OnCreateSessionComplete(InSessionName, false);
 		}
 	}
 #if !UE_BUILD_SHIPPING
 	else 
 	{
 		// Hack workflow in development
-		OnCreatePresenceSessionComplete().Broadcast(GameSessionName, true);
+		OnCreatePresenceSessionComplete().Broadcast(NAME_GameSession, true);
 		return true;
 	}
 #endif
 
 	return false;
+}
+
+bool AShooterGameSession::HostSession(const TSharedPtr<const FUniqueNetId> UserId, const FName InSessionName, const FOnlineSessionSettings& SessionSettings)
+{
+	bool bResult = false;
+
+	IOnlineSubsystem* const OnlineSub = IOnlineSubsystem::Get();
+	if (OnlineSub)
+	{
+		CurrentSessionParams.SessionName = InSessionName;
+		CurrentSessionParams.bIsLAN = SessionSettings.bIsLANMatch;
+		CurrentSessionParams.bIsPresence = SessionSettings.bUsesPresence;
+		CurrentSessionParams.UserId = UserId;
+		MaxPlayers = SessionSettings.NumPrivateConnections + SessionSettings.NumPublicConnections;
+
+		IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
+		if (Sessions.IsValid() && CurrentSessionParams.UserId.IsValid())
+		{
+			OnCreateSessionCompleteDelegateHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteDelegate);
+			bResult = Sessions->CreateSession(*UserId, InSessionName, SessionSettings);
+		}
+		else
+		{
+			OnCreateSessionComplete(InSessionName, false);
+		}
+	}
+
+	return bResult;
 }
 
 void AShooterGameSession::OnFindSessionsComplete(bool bWasSuccessful)
@@ -310,12 +348,12 @@ void AShooterGameSession::OnNoMatchesAvailable()
 	SearchSettings = NULL;
 }
 
-void AShooterGameSession::FindSessions(TSharedPtr<const FUniqueNetId> UserId, FName SessionName, bool bIsLAN, bool bIsPresence)
+void AShooterGameSession::FindSessions(TSharedPtr<const FUniqueNetId> UserId, FName InSessionName, bool bIsLAN, bool bIsPresence)
 {
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
 	{
-		CurrentSessionParams.SessionName = SessionName;
+		CurrentSessionParams.SessionName = InSessionName;
 		CurrentSessionParams.bIsLAN = bIsLAN;
 		CurrentSessionParams.bIsPresence = bIsPresence;
 		CurrentSessionParams.UserId = UserId;
@@ -338,19 +376,19 @@ void AShooterGameSession::FindSessions(TSharedPtr<const FUniqueNetId> UserId, FN
 	}
 }
 
-bool AShooterGameSession::JoinSession(TSharedPtr<const FUniqueNetId> UserId, FName SessionName, int32 SessionIndexInSearchResults)
+bool AShooterGameSession::JoinSession(TSharedPtr<const FUniqueNetId> UserId, FName InSessionName, int32 SessionIndexInSearchResults)
 {
 	bool bResult = false;
 
 	if (SessionIndexInSearchResults >= 0 && SessionIndexInSearchResults < SearchSettings->SearchResults.Num())
 	{
-		bResult = JoinSession(UserId, SessionName, SearchSettings->SearchResults[SessionIndexInSearchResults]);
+		bResult = JoinSession(UserId, InSessionName, SearchSettings->SearchResults[SessionIndexInSearchResults]);
 	}
 
 	return bResult;
 }
 
-bool AShooterGameSession::JoinSession(TSharedPtr<const FUniqueNetId> UserId, FName SessionName, const FOnlineSessionSearchResult& SearchResult)
+bool AShooterGameSession::JoinSession(TSharedPtr<const FUniqueNetId> UserId, FName InSessionName, const FOnlineSessionSearchResult& SearchResult)
 {
 	bool bResult = false;
 
@@ -361,7 +399,7 @@ bool AShooterGameSession::JoinSession(TSharedPtr<const FUniqueNetId> UserId, FNa
 		if (Sessions.IsValid() && UserId.IsValid())
 		{
 			OnJoinSessionCompleteDelegateHandle = Sessions->AddOnJoinSessionCompleteDelegate_Handle(OnJoinSessionCompleteDelegate);
-			bResult = Sessions->JoinSession(*UserId, SessionName, SearchResult);
+			bResult = Sessions->JoinSession(*UserId, InSessionName, SearchResult);
 		}
 	}
 
@@ -374,11 +412,11 @@ bool AShooterGameSession::JoinSession(TSharedPtr<const FUniqueNetId> UserId, FNa
  * @param SessionName the name of the session this callback is for
  * @param bWasSuccessful true if the async action completed without error, false if there was an error
  */
-void AShooterGameSession::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
+void AShooterGameSession::OnJoinSessionComplete(FName InSessionName, EOnJoinSessionCompleteResult::Type Result)
 {
 	bool bWillTravel = false;
 
-	UE_LOG(LogOnlineGame, Verbose, TEXT("OnJoinSessionComplete %s bSuccess: %d"), *SessionName.ToString(), static_cast<int32>(Result));
+	UE_LOG(LogOnlineGame, Verbose, TEXT("OnJoinSessionComplete %s bSuccess: %d"), *InSessionName.ToString(), static_cast<int32>(Result));
 	
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 	IOnlineSessionPtr Sessions = NULL;
@@ -391,14 +429,14 @@ void AShooterGameSession::OnJoinSessionComplete(FName SessionName, EOnJoinSessio
 	OnJoinSessionComplete().Broadcast(Result);
 }
 
-bool AShooterGameSession::TravelToSession(int32 ControllerId, FName SessionName)
+bool AShooterGameSession::TravelToSession(int32 ControllerId, FName InSessionName)
 {
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
 	{
 		FString URL;
 		IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
-		if (Sessions.IsValid() && Sessions->GetResolvedConnectString(SessionName, URL))
+		if (Sessions.IsValid() && Sessions->GetResolvedConnectString(InSessionName, URL))
 		{
 			APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), ControllerId);
 			if (PC)
@@ -426,4 +464,32 @@ bool AShooterGameSession::TravelToSession(int32 ControllerId, FName SessionName)
 #endif //!UE_BUILD_SHIPPING
 
 	return false;
+}
+
+void AShooterGameSession::RegisterServer()
+{
+	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
+	if (OnlineSub)
+	{
+		IOnlineSessionPtr SessionInt = Online::GetSessionInterface();
+		if (SessionInt.IsValid())
+		{
+			TSharedPtr<class FShooterOnlineSessionSettings> ShooterHostSettings = MakeShareable(new FShooterOnlineSessionSettings(false, false, 16));
+			ShooterHostSettings->Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
+			ShooterHostSettings->Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
+			ShooterHostSettings->Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
+			ShooterHostSettings->Set(SETTING_GAMEMODE, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::ViaOnlineService);
+			ShooterHostSettings->Set(SETTING_MAPNAME, GetWorld()->GetMapName(), EOnlineDataAdvertisementType::ViaOnlineService);
+			ShooterHostSettings->bAllowInvites = true;
+			ShooterHostSettings->bIsDedicated = true;
+			if (FParse::Param(FCommandLine::Get(), TEXT("forcelan")))
+			{
+				UE_LOG(LogOnlineGame, Log, TEXT("Registering server as a LAN server"));
+				ShooterHostSettings->bIsLANMatch = true;
+			}
+			HostSettings = ShooterHostSettings;
+			OnCreateSessionCompleteDelegateHandle = SessionInt->AddOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteDelegate);
+			SessionInt->CreateSession(0, NAME_GameSession, *HostSettings);
+		}
+	}
 }

@@ -30,7 +30,7 @@ void UKeepFirstPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	bool bWantsHit = BoolValue.GetValue();
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 
 	// @ todo many bots
 	TArray<FVector> ContextLocations;
@@ -79,7 +79,7 @@ void UKeepFirstPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
 	{
 		
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		It.SetScore(TestPurpose, FilterType, FirstLocations.Contains(ItemLocation), bWantsHit);
 	}
 }

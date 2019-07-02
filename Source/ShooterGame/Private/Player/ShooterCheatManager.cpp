@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "Player/ShooterCheatManager.h"
@@ -29,7 +29,7 @@ void UShooterCheatManager::ToggleMatchTimer()
 {
 	AShooterPlayerController* MyPC = GetOuterAShooterPlayerController();
 
-	AShooterGameState* const MyGameState = Cast<AShooterGameState>(MyPC->GetWorld()->GameState);
+	AShooterGameState* const MyGameState = MyPC->GetWorld()->GetGameState<AShooterGameState>();
 	if (MyGameState && MyGameState->Role == ROLE_Authority)
 	{
 		MyGameState->bTimerPaused = !MyGameState->bTimerPaused;

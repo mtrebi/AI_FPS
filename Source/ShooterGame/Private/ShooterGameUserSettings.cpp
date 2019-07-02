@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterGameUserSettings.h"
@@ -15,6 +15,7 @@ void UShooterGameUserSettings::SetToDefaults()
 
 	GraphicsQuality = 1;	
 	bIsLanMatch = true;
+	bIsDedicatedServer = false;
 }
 
 void UShooterGameUserSettings::ApplySettings(bool bCheckForCommandLineOverrides)
@@ -29,9 +30,4 @@ void UShooterGameUserSettings::ApplySettings(bool bCheckForCommandLineOverrides)
 	}
 
 	Super::ApplySettings(bCheckForCommandLineOverrides);
-
-	if (!GEngine)
-	{
-		return;
-	}
 }
