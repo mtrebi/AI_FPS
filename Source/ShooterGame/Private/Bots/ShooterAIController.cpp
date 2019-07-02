@@ -50,7 +50,7 @@ AShooterAIController::AShooterAIController(const FObjectInitializer& ObjectIniti
 	AIPerceptionHearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	AIPerceptionComp->ConfigureSense(*AIPerceptionHearingConfig);
 
-	//AIPerceptionComp->OnPerceptionUpdated.AddDynamic(this, &AShooterAIController::OnPerceptionUpdated);
+	AIPerceptionComp->OnPerceptionUpdated.AddDynamic(this, &AShooterAIController::OnPerceptionUpdated);
 
 	bWantsPlayerState = true;	
 }
@@ -131,7 +131,7 @@ bool AShooterAIController::HasWeaponLOSToEnemy(AActor* InEnemyActor, const bool 
 	bool bHasLOS = false;
 	// Perform trace to retrieve hit info
 	FCollisionQueryParams TraceParams(LosTag, true, GetPawn());
-	//TraceParams.bTraceAsyncScene = true;
+	TraceParams.bTraceComplex = true;
 
 	TraceParams.bReturnPhysicalMaterial = true;	
 	FVector StartLocation = MyBot->GetActorLocation();	

@@ -30,7 +30,7 @@ public class ShooterGame : ModuleRules
 				"AIModule",
 				"GameplayTasks",
 				"Navmesh",
-                "ProceduralMeshComponent",
+                
             }
 		);
 
