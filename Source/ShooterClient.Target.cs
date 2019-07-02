@@ -3,14 +3,14 @@
 using UnrealBuildTool;
 using System.Collections.Generic;
 
-public class ShooterGameTarget : TargetRules
+public class ShooterClientTarget : TargetRules
 {
-    public ShooterGameTarget(TargetInfo Target) : base(Target)
-    {
-        Type = TargetType.Game;
-        bUsesSteam = true;
+	public ShooterClientTarget(TargetInfo Target) : base(Target)
+	{
+		Type = TargetType.Client;
+		bUsesSteam = true;		
 
-		ExtraModuleNames.Add("ShooterGame");
+        ExtraModuleNames.Add("ShooterGame");
 
 		if (Target.Platform == UnrealTargetPlatform.PS4)
         {
