@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -77,6 +77,12 @@ public:
 	/** Called on a particular leaderboard read */
 	void OnStatsRead(bool bWasSuccessful);
 
+	/** Called to login on relevant platforms first before making a leaderboard read */
+	void ReadStatsLoginRequired();
+
+	/** Delegate after login has been been completed */
+	void OnLoginCompleteReadStats(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
+
 	/** selects item at current + MoveBy index */
 	void MoveSelection(int32 MoveBy);
 
@@ -114,6 +120,9 @@ protected:
 
 	/** Handle to the registered LeaderboardReadComplete delegate */
 	FDelegateHandle LeaderboardReadCompleteDelegateHandle;
+	
+	/** Handle to the registered LoginComplete delegate */
+	FDelegateHandle OnLoginCompleteDelegateHandle;
 };
 
 

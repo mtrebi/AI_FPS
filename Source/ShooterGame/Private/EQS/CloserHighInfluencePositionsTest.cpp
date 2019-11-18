@@ -33,7 +33,7 @@ void UCloserHighInfluencePositionsTest::RunTest(FEnvQueryInstance& QueryInstance
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 
 
 	APawn * Pawn = Cast<APawn>(QueryOwner);
@@ -56,7 +56,7 @@ void UCloserHighInfluencePositionsTest::RunTest(FEnvQueryInstance& QueryInstance
 	}
 
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It) {
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		InfluenceTile * ItemTile = InfluenceMap->GetInfluence(ItemLocation);
 		TArray<InfluenceTile *> Neighbors = InfluenceMap->GetWalkableNeighbors(ItemTile->Index);
 

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterWelcomeMenu.h"
@@ -21,6 +21,8 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 	/** The actual curve that animates the text. */
 	FCurveHandle TextColorCurve;
 
+	TSharedPtr<SRichTextBlock> PressPlayText;
+
 	SLATE_BEGIN_ARGS( SShooterWelcomeMenuWidget )
 	{}
 
@@ -31,16 +33,6 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 	virtual bool SupportsKeyboardFocus() const override
 	{
 		return true;
-	}
-
-	/**
-	 * Gets the text color based on the current state of the animation.
-	 *
-	 * @return The text color based on the current state of the animation.
-	 */
-	FSlateColor GetTextColor() const
-	{
-		return FSlateColor(FMath::Lerp(FLinearColor(0.0f,0.0f,0.0f,1.0f), FLinearColor(0.5f,0.5f,0.5f,1.0f), TextColorCurve.GetLerp()));
 	}
 
 	void Construct( const FArguments& InArgs )
@@ -58,14 +50,17 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 			.VAlign(VAlign_Center)
 			.HAlign(HAlign_Center)
 			[ 
-				SNew( STextBlock )
+				SAssignNew( PressPlayText, SRichTextBlock )
 #if PLATFORM_PS4
 				.Text( LOCTEXT("PressStartPS4", "PRESS CROSS BUTTON TO PLAY" ) )
+#elif PLATFORM_SWITCH
+				.Text(LOCTEXT("PressStartSwitch", "PRESS <img src=\"ShooterGame.Switch.Right\"/> TO PLAY"))
 #else
 				.Text( LOCTEXT("PressStartXboxOne", "PRESS A TO PLAY" ) )
 #endif
-				.ColorAndOpacity(this, &SShooterWelcomeMenuWidget::GetTextColor)
 				.TextStyle( FShooterStyle::Get(), "ShooterGame.WelcomeScreen.WelcomeTextStyle" )
+				.DecoratorStyleSet(&FShooterStyle::Get())
+				+ SRichTextBlock::ImageDecorator()
 			]
 		];
 	}
@@ -83,6 +78,8 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 				TextAnimation.Play(this->AsShared());
 			}
 		}
+
+		PressPlayText->SetRenderOpacity(FMath::Lerp(0.5f, 1.0f, TextColorCurve.GetLerp()));
 	}
 
 	virtual FReply OnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override
@@ -95,9 +92,19 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 		const FKey Key = InKeyEvent.GetKey();
 		if (Key == EKeys::Enter)
 		{
-			MenuOwner->HandleLoginUIClosed(TSharedPtr<const FUniqueNetId>(), 0);
+			TSharedPtr<const FUniqueNetId> UserId;
+			const auto OnlineSub = IOnlineSubsystem::Get();
+			if (OnlineSub)
+			{
+				const auto IdentityInterface = OnlineSub->GetIdentityInterface();
+				if (IdentityInterface.IsValid())
+				{
+					UserId = IdentityInterface->GetUniquePlayerId(InKeyEvent.GetUserIndex());
+				}
+			}
+			MenuOwner->HandleLoginUIClosed(UserId, InKeyEvent.GetUserIndex());
 		}
-		else if (!MenuOwner->GetControlsLocked() && Key == EKeys::Gamepad_FaceButton_Bottom)
+		else if (!MenuOwner->GetControlsLocked() && Key == EKeys::Virtual_Accept)
 		{
 			bool bSkipToMainMenu = true;
 
@@ -118,7 +125,7 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 							const auto ExternalUI = OnlineSub->GetExternalUIInterface();
 							if (ExternalUI.IsValid())
 							{
-								ExternalUI->ShowLoginUI(InKeyEvent.GetUserIndex(), false, IOnlineExternalUI::FOnLoginUIClosedDelegate::CreateSP(MenuOwner, &FShooterWelcomeMenu::HandleLoginUIClosed));
+								ExternalUI->ShowLoginUI(InKeyEvent.GetUserIndex(), false, true, FOnLoginUIClosedDelegate::CreateSP(MenuOwner, &FShooterWelcomeMenu::HandleLoginUIClosed));
 								bSkipToMainMenu = false;
 							}
 						}
@@ -181,7 +188,7 @@ void FShooterWelcomeMenu::RemoveFromGameViewport()
 	}
 }
 
-void FShooterWelcomeMenu::HandleLoginUIClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex)
+void FShooterWelcomeMenu::HandleLoginUIClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex, const FOnlineError& Error)
 {
 	if ( !ensure( GameInstance.IsValid() ) )
 	{
@@ -256,7 +263,7 @@ void FShooterWelcomeMenu::SetControllerAndAdvanceToMainMenu(const int Controller
 	if ( NewPlayerOwner != nullptr && ControllerIndex != -1 )
 	{
 		NewPlayerOwner->SetControllerId(ControllerIndex);
-		NewPlayerOwner->SetCachedUniqueNetId(NewPlayerOwner->GetUniqueNetIdFromCachedControllerId());
+		NewPlayerOwner->SetCachedUniqueNetId(NewPlayerOwner->GetUniqueNetIdFromCachedControllerId().GetUniqueNetId());
 
 		// tell gameinstance to transition to main menu
 		GameInstance->GotoState(ShooterGameInstanceState::MainMenu);

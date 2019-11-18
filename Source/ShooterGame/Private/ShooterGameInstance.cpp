@@ -1,4 +1,4 @@
-﻿// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 /*=============================================================================
 	ShooterGameInstance.cpp
@@ -17,7 +17,9 @@
 #include "Player/ShooterPlayerController_Menu.h"
 #include "Online/ShooterPlayerState.h"
 #include "Online/ShooterGameSession.h"
+#include "Online/ShooterOnlineSessionClient.h"
 
+FAutoConsoleVariable CVarShooterGameTestEncryption(TEXT("ShooterGame.TestEncryption"), 0, TEXT("If true, clients will send an encryption token with their request to join the server and attempt to encrypt the connection using a debug key. This is NOT SECURE and for demonstration purposes only."));
 
 void SShooterWaitDialog::Construct(const FArguments& InArgs)
 {
@@ -81,7 +83,7 @@ namespace ShooterGameInstanceState
 
 UShooterGameInstance::UShooterGameInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
-	, bIsOnline(true) // Default to online
+	, OnlineMode(EOnlineMode::Online) // Default to online
 	, bIsLicensed(true) // Default to licensed (should have been checked by OS on boot)
 {
 	CurrentState = ShooterGameInstanceState::None;
@@ -94,14 +96,16 @@ void UShooterGameInstance::Init()
 	IgnorePairingChangeForControllerId = -1;
 	CurrentConnectionStatus = EOnlineServerConnectionStatus::Connected;
 
+	LocalPlayerOnlineStatus.InsertDefaulted(0, MAX_LOCAL_PLAYERS);
+
 	// game requires the ability to ID users.
 	const auto OnlineSub = IOnlineSubsystem::Get();
 	check(OnlineSub);
 	const auto IdentityInterface = OnlineSub->GetIdentityInterface();
 	check(IdentityInterface.IsValid());
 
-	const auto SessionInterface = OnlineSub->GetSessionInterface();
-	check(SessionInterface.IsValid());
+ 	const auto SessionInterface = OnlineSub->GetSessionInterface();
+ 	check(SessionInterface.IsValid());
 
 	// bind any OSS delegates we needs to handle
 	for (int i = 0; i < MAX_LOCAL_PLAYERS; ++i)
@@ -121,7 +125,7 @@ void UShooterGameInstance::Init()
 	FCoreDelegates::ApplicationLicenseChange.AddUObject(this, &UShooterGameInstance::HandleAppLicenseUpdate);
 
 	FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UShooterGameInstance::OnPreLoadMap);
-	FCoreUObjectDelegates::PostLoadMap.AddUObject(this, &UShooterGameInstance::OnPostLoadMap);
+	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UShooterGameInstance::OnPostLoadMap);
 
 	FCoreUObjectDelegates::PostDemoPlay.AddUObject(this, &UShooterGameInstance::OnPostDemoPlay);
 
@@ -129,13 +133,24 @@ void UShooterGameInstance::Init()
 
 	OnlineSub->AddOnConnectionStatusChangedDelegate_Handle( FOnConnectionStatusChangedDelegate::CreateUObject( this, &UShooterGameInstance::HandleNetworkConnectionStatusChanged ) );
 
-	SessionInterface->AddOnSessionFailureDelegate_Handle( FOnSessionFailureDelegate::CreateUObject( this, &UShooterGameInstance::HandleSessionFailure ) );
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->AddOnSessionFailureDelegate_Handle( FOnSessionFailureDelegate::CreateUObject( this, &UShooterGameInstance::HandleSessionFailure ) );
+	}
 	
 	OnEndSessionCompleteDelegate = FOnEndSessionCompleteDelegate::CreateUObject(this, &UShooterGameInstance::OnEndSessionComplete);
 
 	// Register delegate for ticker callback
 	TickDelegate = FTickerDelegate::CreateUObject(this, &UShooterGameInstance::Tick);
 	TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(TickDelegate);
+
+	// Initialize the debug key with a set value for AES256. This is not secure and for example purposes only.
+	DebugTestEncryptionKey.SetNum(32);
+
+	for (int32 i = 0; i < DebugTestEncryptionKey.Num(); ++i)
+	{
+		DebugTestEncryptionKey[i] = uint8(i);
+	}
 }
 
 void UShooterGameInstance::Shutdown()
@@ -146,52 +161,18 @@ void UShooterGameInstance::Shutdown()
 	FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 }
 
-void UShooterGameInstance::OnSessionUserInviteAccepted( 
-	const bool							bWasSuccess, 
-	const int32							ControllerId, 
-	TSharedPtr< const FUniqueNetId > 	UserId, 
-	const FOnlineSessionSearchResult &	InviteResult
-)
+void UShooterGameInstance::HandleNetworkConnectionStatusChanged( const FString& ServiceName, EOnlineServerConnectionStatus::Type LastConnectionStatus, EOnlineServerConnectionStatus::Type ConnectionStatus )
 {
-	UE_LOG( LogOnline, Verbose, TEXT( "HandleSessionUserInviteAccepted: bSuccess: %d, ControllerId: %d, User: %s" ), bWasSuccess, ControllerId, UserId.IsValid() ? *UserId->ToString() : TEXT( "NULL ") );
-
-	if ( !bWasSuccess )
-	{
-		return;
-	}
-
-	if ( !InviteResult.IsValid() )
-	{
-		UE_LOG(LogOnline, Warning, TEXT( "Invite accept returned no search result." ) );
-		return;
-	}
-
-	if ( !UserId.IsValid() )
-	{
-		UE_LOG(LogOnline, Warning, TEXT( "Invite accept returned no user." ) );
-		return;
-	}
-
-	// Set the pending invite, and then go to the initial screen, which is where we will process it
-	PendingInvite.ControllerId					= ControllerId;
-	PendingInvite.UserId						= UserId;
-	PendingInvite.InviteResult					= InviteResult;
-	PendingInvite.bPrivilegesCheckedAndAllowed	= false;
-
-	GotoState( ShooterGameInstanceState::PendingInvite );
-}
-
-void UShooterGameInstance::HandleNetworkConnectionStatusChanged(  EOnlineServerConnectionStatus::Type LastConnectionStatus, EOnlineServerConnectionStatus::Type ConnectionStatus )
-{
-	UE_LOG( LogOnlineGame, Warning, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: %s" ), EOnlineServerConnectionStatus::ToString( ConnectionStatus ) );
+	UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: %s" ), EOnlineServerConnectionStatus::ToString( ConnectionStatus ) );
 
 #if SHOOTER_CONSOLE_UI
 	// If we are disconnected from server, and not currently at (or heading to) the welcome screen
 	// then display a message on consoles
-	if (	bIsOnline && 
+	if (	OnlineMode != EOnlineMode::Offline && 
 			PendingState != ShooterGameInstanceState::WelcomeScreen &&
 			CurrentState != ShooterGameInstanceState::WelcomeScreen && 
-			ConnectionStatus != EOnlineServerConnectionStatus::Connected )
+			ConnectionStatus != EOnlineServerConnectionStatus::Connected &&
+			ConnectionStatus != EOnlineServerConnectionStatus::Normal)
 	{
 		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: Going to main menu" ) );
 
@@ -204,6 +185,13 @@ void UShooterGameInstance::HandleNetworkConnectionStatusChanged(  EOnlineServerC
 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
 #endif
 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+		
+		UWorld* const World = GetWorld();
+		AShooterGameMode* const GameMode = World != NULL ? Cast<AShooterGameMode>(World->GetAuthGameMode()) : NULL;
+		if (GameMode)
+		{
+			GameMode->AbortMatch();
+		}
 		
 		ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
 	}
@@ -218,7 +206,7 @@ void UShooterGameInstance::HandleSessionFailure( const FUniqueNetId& NetId, ESes
 
 #if SHOOTER_CONSOLE_UI
 	// If we are not currently at (or heading to) the welcome screen then display a message on consoles
-	if (	bIsOnline && 
+	if (	OnlineMode != EOnlineMode::Offline &&
 			PendingState != ShooterGameInstanceState::WelcomeScreen &&
 			CurrentState != ShooterGameInstanceState::WelcomeScreen )
 	{
@@ -239,23 +227,26 @@ void UShooterGameInstance::HandleSessionFailure( const FUniqueNetId& NetId, ESes
 #endif
 }
 
-void UShooterGameInstance::OnPreLoadMap()
+void UShooterGameInstance::OnPreLoadMap(const FString& MapName)
 {
-	if ( bPendingEnableSplitscreen )
+	if (bPendingEnableSplitscreen)
 	{
 		// Allow splitscreen
-		GetGameViewportClient()->SetDisableSplitscreenOverride( false );
+		UGameViewportClient* GameViewportClient = GetGameViewportClient();
+		if (GameViewportClient != nullptr)
+		{
+			GameViewportClient->SetDisableSplitscreenOverride(false);
 
-		bPendingEnableSplitscreen = false;
+			bPendingEnableSplitscreen = false;
+		}
 	}
 }
 
-void UShooterGameInstance::OnPostLoadMap()
+void UShooterGameInstance::OnPostLoadMap(UWorld*)
 {
 	// Make sure we hide the loading screen when the level is done loading
 	UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
-
-	if ( ShooterViewport != NULL )
+	if (ShooterViewport != nullptr)
 	{
 		ShooterViewport->HideLoadingScreen();
 	}
@@ -283,6 +274,28 @@ void UShooterGameInstance::OnUserCanPlayInvite(const FUniqueNetId& UserId, EUser
 	}
 }
 
+void UShooterGameInstance::OnUserCanPlayTogether(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults)
+{
+	CleanupOnlinePrivilegeTask();
+	if (WelcomeMenuUI.IsValid())
+	{
+		WelcomeMenuUI->LockControls(false);
+	}
+
+	if (PrivilegeResults == (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures)
+	{
+		if (WelcomeMenuUI.IsValid())
+		{
+			WelcomeMenuUI->SetControllerAndAdvanceToMainMenu(PlayTogetherInfo.UserIndex);
+		}
+	}
+	else
+	{
+		DisplayOnlinePrivilegeFailureDialogs(UserId, Privilege, PrivilegeResults);
+		GotoState(ShooterGameInstanceState::WelcomeScreen);
+	}
+}
+
 void UShooterGameInstance::OnPostDemoPlay()
 {
 	GotoState( ShooterGameInstanceState::Playing );
@@ -290,7 +303,13 @@ void UShooterGameInstance::OnPostDemoPlay()
 
 void UShooterGameInstance::HandleDemoPlaybackFailure( EDemoPlayFailure::Type FailureType, const FString& ErrorString )
 {
-	ShowMessageThenGotoState( FText::Format( NSLOCTEXT("UShooterGameInstance", "DemoPlaybackFailedFmt", "Demo playback failed: {0}"), FText::FromString(ErrorString) ), NSLOCTEXT( "DialogButtons", "OKAY", "OK" ), FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
+	if (GetWorld() != nullptr && GetWorld()->WorldType == EWorldType::PIE)
+	{
+		UE_LOG(LogEngine, Warning, TEXT("Demo failed to play back correctly, got error %s"), *ErrorString);
+		return;
+	}
+
+	ShowMessageThenGotoState(FText::Format(NSLOCTEXT("UShooterGameInstance", "DemoPlaybackFailedFmt", "Demo playback failed: {0}"), FText::FromString(ErrorString)), NSLOCTEXT("DialogButtons", "OKAY", "OK"), FText::GetEmpty(), ShooterGameInstanceState::MainMenu);
 }
 
 void UShooterGameInstance::StartGameInstance()
@@ -310,6 +329,12 @@ void UShooterGameInstance::StartGameInstance()
 			DefaultURL.LoadURLConfig(TEXT("DefaultPlayer"), GGameIni);
 
 			FURL URL(&DefaultURL, Parm, TRAVEL_Partial);
+
+			// If forcelan is set, we need to make sure to add the LAN flag to the travel url
+			if (FParse::Param(Cmd, TEXT("forcelan")))
+			{
+				URL.AddOption(TEXT("bIsLanMatch"));
+			}
 
 			if (URL.Valid)
 			{
@@ -476,7 +501,7 @@ AShooterGameSession* UShooterGameInstance::GetGameSession() const
 	UWorld* const World = GetWorld();
 	if (World)
 	{
-		AGameMode* const Game = World->GetAuthGameMode();
+		AGameModeBase* const Game = World->GetAuthGameMode();
 		if (Game)
 		{
 			return Cast<AShooterGameSession>(Game->GameSession);
@@ -505,6 +530,11 @@ void UShooterGameInstance::TravelLocalSessionFailure(UWorld *World, ETravelFailu
 void UShooterGameInstance::ShowMessageThenGoMain(const FText& Message, const FText& OKButtonString, const FText& CancelButtonString)
 {
 	ShowMessageThenGotoState(Message, OKButtonString, CancelButtonString, ShooterGameInstanceState::MainMenu);
+}
+
+void UShooterGameInstance::SetPendingInvite(const FShooterPendingInvite& InPendingInvite)
+{
+	PendingInvite = InPendingInvite;
 }
 
 void UShooterGameInstance::GotoState(FName NewState)
@@ -607,7 +637,7 @@ void UShooterGameInstance::EndPendingInviteState()
 void UShooterGameInstance::BeginWelcomeScreenState()
 {
 	//this must come before split screen player removal so that the OSS sets all players to not using online features.
-	SetIsOnline(false);
+	SetOnlineMode(EOnlineMode::Offline);
 
 	// Remove any possible splitscren players
 	RemoveSplitScreenPlayers();
@@ -634,18 +664,20 @@ void UShooterGameInstance::EndWelcomeScreenState()
 	}
 }
 
-void UShooterGameInstance::SetPresenceForLocalPlayers(const FVariantData& PresenceData)
+void UShooterGameInstance::SetPresenceForLocalPlayers(const FString& StatusStr, const FVariantData& PresenceData)
 {
 	const auto Presence = Online::GetPresenceInterface();
 	if (Presence.IsValid())
 	{
 		for (int i = 0; i < LocalPlayers.Num(); ++i)
 		{
-			const TSharedPtr<const FUniqueNetId> UserId = LocalPlayers[i]->GetPreferredUniqueNetId();
+			FUniqueNetIdRepl UserId = LocalPlayers[i]->GetPreferredUniqueNetId();
 
 			if (UserId.IsValid())
 			{
 				FOnlineUserPresenceStatus PresenceStatus;
+				PresenceStatus.StatusStr = StatusStr;
+				PresenceStatus.State = EOnlinePresenceState::Online;
 				PresenceStatus.Properties.Add(DefaultPresenceKey, PresenceData);
 
 				Presence->SetPresence(*UserId, PresenceStatus);
@@ -664,16 +696,21 @@ void UShooterGameInstance::BeginMainMenuState()
 		ShooterViewport->HideLoadingScreen();
 	}
 
-	SetIsOnline(false);
+	SetOnlineMode(EOnlineMode::Offline);
 
 	// Disallow splitscreen
-	GetGameViewportClient()->SetDisableSplitscreenOverride( true );
+	UGameViewportClient* GameViewportClient = GetGameViewportClient();
+	
+	if (GameViewportClient)
+	{
+		GetGameViewportClient()->SetDisableSplitscreenOverride(true);
+	}
 
 	// Remove any possible splitscren players
 	RemoveSplitScreenPlayers();
 
 	// Set presence to menu state for the owning player
-	SetPresenceForLocalPlayers(FVariantData(FString(TEXT("OnMenu"))));
+	SetPresenceForLocalPlayers(FString(TEXT("In Menu")), FVariantData(FString(TEXT("OnMenu"))));
 
 	// load startup map
 	LoadFrontEndMap(MainMenuMap);
@@ -685,13 +722,21 @@ void UShooterGameInstance::BeginMainMenuState()
 	MainMenuUI->Construct(this, Player);
 	MainMenuUI->AddMenuToGameViewport();
 
+	// It's possible that a play together event was sent by the system while the player was in-game or didn't
+	// have the application launched. The game will automatically go directly to the main menu state in those cases
+	// so this will handle Play Together if that is why we transitioned here.
+	if (PlayTogetherInfo.UserIndex != -1)
+	{
+		MainMenuUI->OnPlayTogetherEventReceived();
+	}
+
 #if !SHOOTER_CONSOLE_UI
 	// The cached unique net ID is usually set on the welcome screen, but there isn't
 	// one on PC/Mac, so do it here.
 	if (Player != nullptr)
 	{
 		Player->SetControllerId(0);
-		Player->SetCachedUniqueNetId(Player->GetUniqueNetIdFromCachedControllerId());
+		Player->SetCachedUniqueNetId(Player->GetUniqueNetIdFromCachedControllerId().GetUniqueNetId());
 	}
 #endif
 
@@ -745,7 +790,7 @@ void UShooterGameInstance::BeginPlayingState()
 	bPendingEnableSplitscreen = true;
 
 	// Set presence for playing in a map
-	SetPresenceForLocalPlayers(FVariantData(FString(TEXT("InGame"))));
+	SetPresenceForLocalPlayers(FString(TEXT("In Game")), FVariantData(FString(TEXT("InGame"))));
 
 	// Make sure viewport has focus
 	FSlateApplication::Get().SetAllUserFocusToGameViewport();
@@ -757,7 +802,7 @@ void UShooterGameInstance::EndPlayingState()
 	GetGameViewportClient()->SetDisableSplitscreenOverride( true );
 
 	// Clear the players' presence information
-	SetPresenceForLocalPlayers(FVariantData(FString(TEXT("OnMenu"))));
+	SetPresenceForLocalPlayers(FString(TEXT("In Menu")), FVariantData(FString(TEXT("OnMenu"))));
 
 	UWorld* const World = GetWorld();
 	AShooterGameState* const GameState = World != NULL ? World->GetGameState<AShooterGameState>() : NULL;
@@ -815,32 +860,33 @@ void UShooterGameInstance::CleanupSessionOnReturnToMenu()
 
 	if ( Sessions.IsValid() )
 	{
-		EOnlineSessionState::Type SessionState = Sessions->GetSessionState(GameSessionName);
-		UE_LOG(LogOnline, Log, TEXT("Session %s is '%s'"), *GameSessionName.ToString(), EOnlineSessionState::ToString(SessionState));
+		FName GameSession(NAME_GameSession);
+		EOnlineSessionState::Type SessionState = Sessions->GetSessionState(NAME_GameSession);
+		UE_LOG(LogOnline, Log, TEXT("Session %s is '%s'"), *GameSession.ToString(), EOnlineSessionState::ToString(SessionState));
 
 		if ( EOnlineSessionState::InProgress == SessionState )
 		{
-			UE_LOG(LogOnline, Log, TEXT("Ending session %s on return to main menu"), *GameSessionName.ToString() );
+			UE_LOG(LogOnline, Log, TEXT("Ending session %s on return to main menu"), *GameSession.ToString() );
 			OnEndSessionCompleteDelegateHandle = Sessions->AddOnEndSessionCompleteDelegate_Handle(OnEndSessionCompleteDelegate);
-			Sessions->EndSession(GameSessionName);
+			Sessions->EndSession(NAME_GameSession);
 			bPendingOnlineOp = true;
 		}
 		else if ( EOnlineSessionState::Ending == SessionState )
 		{
-			UE_LOG(LogOnline, Log, TEXT("Waiting for session %s to end on return to main menu"), *GameSessionName.ToString() );
+			UE_LOG(LogOnline, Log, TEXT("Waiting for session %s to end on return to main menu"), *GameSession.ToString() );
 			OnEndSessionCompleteDelegateHandle = Sessions->AddOnEndSessionCompleteDelegate_Handle(OnEndSessionCompleteDelegate);
 			bPendingOnlineOp = true;
 		}
 		else if ( EOnlineSessionState::Ended == SessionState || EOnlineSessionState::Pending == SessionState )
 		{
-			UE_LOG(LogOnline, Log, TEXT("Destroying session %s on return to main menu"), *GameSessionName.ToString() );				
+			UE_LOG(LogOnline, Log, TEXT("Destroying session %s on return to main menu"), *GameSession.ToString() );
 			OnDestroySessionCompleteDelegateHandle = Sessions->AddOnDestroySessionCompleteDelegate_Handle(OnEndSessionCompleteDelegate);
-			Sessions->DestroySession(GameSessionName);
+			Sessions->DestroySession(NAME_GameSession);
 			bPendingOnlineOp = true;
 		}
-		else if ( EOnlineSessionState::Starting == SessionState )
+		else if ( EOnlineSessionState::Starting == SessionState || EOnlineSessionState::Creating == SessionState)
 		{
-			UE_LOG(LogOnline, Log, TEXT("Waiting for session %s to start, and then we will end it to return to main menu"), *GameSessionName.ToString() );
+			UE_LOG(LogOnline, Log, TEXT("Waiting for session %s to start, and then we will end it to return to main menu"), *GameSession.ToString() );
 			OnStartSessionCompleteDelegateHandle = Sessions->AddOnStartSessionCompleteDelegate_Handle(OnEndSessionCompleteDelegate);
 			bPendingOnlineOp = true;
 		}
@@ -879,10 +925,56 @@ void UShooterGameInstance::AddNetworkFailureHandlers()
 	}
 }
 
-// starts playing a game as the host
+TSubclassOf<UOnlineSession> UShooterGameInstance::GetOnlineSessionClass()
+{
+	return UShooterOnlineSessionClient::StaticClass();
+}
+
+bool UShooterGameInstance::HostQuickSession(ULocalPlayer& LocalPlayer, const FOnlineSessionSettings& SessionSettings)
+{
+	// This function is different from BeginHostingQuickMatch in that it creates a session and then starts a quick match,
+	// while BeginHostingQuickMatch assumes a session already exists
+
+	if (AShooterGameSession* const GameSession = GetGameSession())
+	{
+		// Add callback delegate for completion
+		OnCreatePresenceSessionCompleteDelegateHandle = GameSession->OnCreatePresenceSessionComplete().AddUObject(this, &UShooterGameInstance::OnCreatePresenceSessionComplete);
+
+		TravelURL = GetQuickMatchUrl();
+
+		FOnlineSessionSettings HostSettings = SessionSettings;
+
+		const FString GameType = UGameplayStatics::ParseOption(TravelURL, TEXT("game"));
+
+		// Determine the map name from the travelURL
+		const FString MapNameSubStr = "/Game/Maps/";
+		const FString ChoppedMapName = TravelURL.RightChop(MapNameSubStr.Len());
+		const FString MapName = ChoppedMapName.LeftChop(ChoppedMapName.Len() - ChoppedMapName.Find("?game"));
+
+		HostSettings.Set(SETTING_GAMEMODE, GameType, EOnlineDataAdvertisementType::ViaOnlineService);
+		HostSettings.Set(SETTING_MAPNAME, MapName, EOnlineDataAdvertisementType::ViaOnlineService);
+		HostSettings.NumPublicConnections = 16;
+
+		if (GameSession->HostSession(LocalPlayer.GetPreferredUniqueNetId().GetUniqueNetId(), NAME_GameSession, SessionSettings))
+		{
+			// If any error occurred in the above, pending state would be set
+			if (PendingState == CurrentState || PendingState == ShooterGameInstanceState::None)
+			{
+				// Go ahead and go into loading state now
+				// If we fail, the delegate will handle showing the proper messaging and move to the correct state
+				ShowLoadingScreen();
+				GotoState(ShooterGameInstanceState::Playing);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool UShooterGameInstance::HostGame(ULocalPlayer* LocalPlayer, const FString& GameType, const FString& InTravelURL)
 {
-	if (!GetIsOnline())
+	if (GetOnlineMode() == EOnlineMode::Offline)
 	{
 		//
 		// Offline game, just go straight to map
@@ -915,9 +1007,9 @@ bool UShooterGameInstance::HostGame(ULocalPlayer* LocalPlayer, const FString& Ga
 		const FString& ChoppedMapName = TravelURL.RightChop(MapNameSubStr.Len());
 		const FString& MapName = ChoppedMapName.LeftChop(ChoppedMapName.Len() - ChoppedMapName.Find("?game"));
 
-		if (GameSession->HostSession(LocalPlayer->GetPreferredUniqueNetId(), GameSessionName, GameType, MapName, bIsLanMatch, true, AShooterGameSession::DEFAULT_NUM_PLAYERS))
+		if (GameSession->HostSession(LocalPlayer->GetPreferredUniqueNetId().GetUniqueNetId(), NAME_GameSession, GameType, MapName, bIsLanMatch, true, AShooterGameSession::DEFAULT_NUM_PLAYERS))
 		{
-			// If any error occured in the above, pending state would be set
+			// If any error occurred in the above, pending state would be set
 			if ( (PendingState == CurrentState) || (PendingState == ShooterGameInstanceState::None) )
 			{
 				// Go ahead and go into loading state now
@@ -942,7 +1034,7 @@ bool UShooterGameInstance::JoinSession(ULocalPlayer* LocalPlayer, int32 SessionI
 		AddNetworkFailureHandlers();
 
 		OnJoinSessionCompleteDelegateHandle = GameSession->OnJoinSessionComplete().AddUObject(this, &UShooterGameInstance::OnJoinSessionComplete);
-		if (GameSession->JoinSession(LocalPlayer->GetPreferredUniqueNetId(), GameSessionName, SessionIndexInSearchResults))
+		if (GameSession->JoinSession(LocalPlayer->GetPreferredUniqueNetId().GetUniqueNetId(), NAME_GameSession, SessionIndexInSearchResults))
 		{
 			// If any error occured in the above, pending state would be set
 			if ( (PendingState == CurrentState) || (PendingState == ShooterGameInstanceState::None) )
@@ -968,7 +1060,7 @@ bool UShooterGameInstance::JoinSession(ULocalPlayer* LocalPlayer, const FOnlineS
 		AddNetworkFailureHandlers();
 
 		OnJoinSessionCompleteDelegateHandle = GameSession->OnJoinSessionComplete().AddUObject(this, &UShooterGameInstance::OnJoinSessionComplete);
-		if (GameSession->JoinSession(LocalPlayer->GetPreferredUniqueNetId(), GameSessionName, SearchResult))
+		if (GameSession->JoinSession(LocalPlayer->GetPreferredUniqueNetId().GetUniqueNetId(), NAME_GameSession, SearchResult))
 		{
 			// If any error occured in the above, pending state would be set
 			if ( (PendingState == CurrentState) || (PendingState == ShooterGameInstanceState::None) )
@@ -1011,7 +1103,7 @@ void UShooterGameInstance::OnJoinSessionComplete(EOnJoinSessionCompleteResult::T
 		auto Sessions = Online::GetSessionInterface();
 		if (Sessions.IsValid() && LocalPlayers[1]->GetPreferredUniqueNetId().IsValid())
 		{
-			Sessions->RegisterLocalPlayer(*LocalPlayers[1]->GetPreferredUniqueNetId(), GameSessionName,
+			Sessions->RegisterLocalPlayer(*LocalPlayers[1]->GetPreferredUniqueNetId(), NAME_GameSession,
 				FOnRegisterLocalPlayerCompleteDelegate::CreateUObject(this, &UShooterGameInstance::OnRegisterJoiningLocalPlayerComplete));
 		}
 	}
@@ -1046,7 +1138,7 @@ void UShooterGameInstance::FinishJoinSession(EOnJoinSessionCompleteResult::Type 
 		return;
 	}
 
-	InternalTravelToSession(GameSessionName);
+	InternalTravelToSession(NAME_GameSession);
 }
 
 void UShooterGameInstance::OnRegisterJoiningLocalPlayerComplete(const FUniqueNetId& PlayerId, EOnJoinSessionCompleteResult::Type Result)
@@ -1091,6 +1183,14 @@ void UShooterGameInstance::InternalTravelToSession(const FName& SessionName)
 		return;
 	}
 
+	// Add debug encryption token if desired.
+	if (CVarShooterGameTestEncryption->GetInt() != 0)
+	{
+		// This is just a value for testing/debugging, the server will use the same key regardless of the token value.
+		// But the token could be a user ID and/or session ID that would be used to generate a unique key per user and/or session, if desired.
+		URL += TEXT("?EncryptionToken=1");
+	}
+
 	PlayerController->ClientTravel(URL, TRAVEL_Absolute);
 }
 
@@ -1108,7 +1208,7 @@ void UShooterGameInstance::OnCreatePresenceSessionComplete(FName SessionName, bo
 			auto Sessions = Online::GetSessionInterface();
 			if (Sessions.IsValid() && LocalPlayers[1]->GetPreferredUniqueNetId().IsValid())
 			{
-				Sessions->RegisterLocalPlayer(*LocalPlayers[1]->GetPreferredUniqueNetId(), GameSessionName,
+				Sessions->RegisterLocalPlayer(*LocalPlayers[1]->GetPreferredUniqueNetId(), NAME_GameSession,
 					FOnRegisterLocalPlayerCompleteDelegate::CreateUObject(this, &UShooterGameInstance::OnRegisterLocalPlayerComplete));
 			}
 		}
@@ -1121,7 +1221,7 @@ void UShooterGameInstance::OnCreatePresenceSessionComplete(FName SessionName, bo
 }
 
 /** Initiates the session searching */
-bool UShooterGameInstance::FindSessions(ULocalPlayer* PlayerOwner, bool bFindLAN)
+bool UShooterGameInstance::FindSessions(ULocalPlayer* PlayerOwner, bool bIsDedicatedServer, bool bFindLAN)
 {
 	bool bResult = false;
 
@@ -1134,7 +1234,7 @@ bool UShooterGameInstance::FindSessions(ULocalPlayer* PlayerOwner, bool bFindLAN
 			GameSession->OnFindSessionsComplete().RemoveAll(this);
 			OnSearchSessionsCompleteDelegateHandle = GameSession->OnFindSessionsComplete().AddUObject(this, &UShooterGameInstance::OnSearchSessionsComplete);
 
-			GameSession->FindSessions(PlayerOwner->GetPreferredUniqueNetId(), GameSessionName, bFindLAN, true);
+			GameSession->FindSessions(PlayerOwner->GetPreferredUniqueNetId().GetUniqueNetId(), NAME_GameSession, bFindLAN, !bIsDedicatedServer);
 
 			bResult = true;
 		}
@@ -1156,19 +1256,29 @@ void UShooterGameInstance::OnSearchSessionsComplete(bool bWasSuccessful)
 bool UShooterGameInstance::Tick(float DeltaSeconds)
 {
 	// Dedicated server doesn't need to worry about game state
-	if (IsRunningDedicatedServer() == true)
+	if (IsDedicatedServerInstance() == true)
 	{
 		return true;
 	}
 
+	UShooterGameViewportClient* ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
+	if (FSlateApplication::IsInitialized() && ShooterViewport != nullptr)
+	{
+		if (FSlateApplication::Get().GetGameViewport() != ShooterViewport->GetGameViewportWidget())
+		{
+			return true;
+		}
+	}
+
+	// Because this takes place outside the normal UWorld tick, we need to register what world we're ticking/modifying here to avoid issues in the editor
+	FScopedConditionalWorldSwitcher WorldSwitcher(GetWorld());
+
 	MaybeChangeState();
 
-	UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
-
-	if (CurrentState != ShooterGameInstanceState::WelcomeScreen)
+	if (CurrentState != ShooterGameInstanceState::WelcomeScreen && ShooterViewport != nullptr)
 	{
 		// If at any point we aren't licensed (but we are after welcome screen) bounce them back to the welcome screen
-		if (!bIsLicensed && CurrentState != ShooterGameInstanceState::None && !ShooterViewport->IsShowingDialog())
+		if (!bIsLicensed && CurrentState != ShooterGameInstanceState::None && ShooterViewport != nullptr && !ShooterViewport->IsShowingDialog())
 		{
 			const FText ReturnReason	= NSLOCTEXT( "ProfileMessages", "NeedLicense", "The signed in users do not have a license for this game. Please purchase ShooterGame from the Xbox Marketplace or sign in a user with a valid license." );
 			const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
@@ -1177,8 +1287,7 @@ bool UShooterGameInstance::Tick(float DeltaSeconds)
 		}
 
 		// Show controller disconnected dialog if any local players have an invalid controller
-		if(ShooterViewport != NULL &&
-			!ShooterViewport->IsShowingDialog())
+		if (!ShooterViewport->IsShowingDialog())
 		{
 			for (int i = 0; i < LocalPlayers.Num(); ++i)
 			{
@@ -1188,7 +1297,7 @@ bool UShooterGameInstance::Tick(float DeltaSeconds)
 						LocalPlayers[i],
 						EShooterDialogType::ControllerDisconnected,
 						FText::Format(NSLOCTEXT("ProfileMessages", "PlayerReconnectControllerFmt", "Player {0}, please reconnect your controller."), FText::AsNumber(i + 1)),
-#ifdef PLATFORM_PS4
+#if PLATFORM_PS4
 						NSLOCTEXT("DialogButtons", "PS4_CrossButtonContinue", "Cross Button - Continue"),
 #else
 						NSLOCTEXT("DialogButtons", "AButtonContinue", "A - Continue"),
@@ -1210,7 +1319,7 @@ bool UShooterGameInstance::Tick(float DeltaSeconds)
 
 		if (Sessions.IsValid())
 		{
-			EOnlineSessionState::Type SessionState = Sessions->GetSessionState(GameSessionName);
+			EOnlineSessionState::Type SessionState = Sessions->GetSessionState(NAME_GameSession);
 
 			if (SessionState == EOnlineSessionState::NoSession)
 			{
@@ -1220,12 +1329,21 @@ bool UShooterGameInstance::Tick(float DeltaSeconds)
 				{
 					NewPlayerOwner->SetControllerId(PendingInvite.ControllerId);
 					NewPlayerOwner->SetCachedUniqueNetId(PendingInvite.UserId);
-					SetIsOnline(true);
-					JoinSession(NewPlayerOwner, PendingInvite.InviteResult);					
+					SetOnlineMode(EOnlineMode::Online);
+
+					const bool bIsLocalPlayerHost = PendingInvite.UserId.IsValid() && PendingInvite.InviteResult.Session.OwningUserId.IsValid() && *PendingInvite.UserId == *PendingInvite.InviteResult.Session.OwningUserId;
+					if (bIsLocalPlayerHost)
+					{
+						HostQuickSession(*NewPlayerOwner, PendingInvite.InviteResult.Session.SessionSettings);
+					}
+					else
+					{
+						JoinSession(NewPlayerOwner, PendingInvite.InviteResult);
+					}
 				}
 
 				PendingInvite.UserId.Reset();
-			}			
+			}
 		}
 	}
 
@@ -1242,6 +1360,29 @@ bool UShooterGameInstance::HandleOpenCommand(const TCHAR* Cmd, FOutputDevice& Ar
 
 	return bOpenSuccessful;
 }
+
+bool UShooterGameInstance::HandleDisconnectCommand(const TCHAR* Cmd, FOutputDevice& Ar, UWorld* InWorld)
+{
+	bool const bDisconnectSuccessful = Super::HandleDisconnectCommand(Cmd, Ar, InWorld);
+	if (bDisconnectSuccessful)
+	{
+		GotoState(ShooterGameInstanceState::MainMenu);
+	}
+
+	return bDisconnectSuccessful;
+}
+
+bool UShooterGameInstance::HandleTravelCommand(const TCHAR* Cmd, FOutputDevice& Ar, UWorld* InWorld)
+{
+	bool const bTravelSuccessful = Super::HandleTravelCommand(Cmd, Ar, InWorld);
+	if (bTravelSuccessful)
+	{
+		GotoState(ShooterGameInstanceState::Playing);
+	}
+
+	return bTravelSuccessful;
+}
+
 
 void UShooterGameInstance::HandleSignInChangeMessaging()
 {
@@ -1262,7 +1403,12 @@ void UShooterGameInstance::HandleSignInChangeMessaging()
 
 void UShooterGameInstance::HandleUserLoginChanged(int32 GameUserIndex, ELoginStatus::Type PreviousLoginStatus, ELoginStatus::Type LoginStatus, const FUniqueNetId& UserId)
 {
-	const bool bDowngraded = (LoginStatus == ELoginStatus::NotLoggedIn && !GetIsOnline()) || (LoginStatus != ELoginStatus::LoggedIn && GetIsOnline());	
+	// On Switch, accounts can play in LAN games whether they are signed in online or not. 
+#if PLATFORM_SWITCH
+	const bool bDowngraded = LoginStatus == ELoginStatus::NotLoggedIn || (GetOnlineMode() == EOnlineMode::Online && LoginStatus == ELoginStatus::UsingLocalProfile);
+#else
+	const bool bDowngraded = (LoginStatus == ELoginStatus::NotLoggedIn && GetOnlineMode() == EOnlineMode::Offline) || (LoginStatus != ELoginStatus::LoggedIn && GetOnlineMode() != EOnlineMode::Offline);
+#endif
 
 	UE_LOG( LogOnline, Log, TEXT( "HandleUserLoginChanged: bDownGraded: %i" ), (int)bDowngraded );
 
@@ -1271,6 +1417,8 @@ void UShooterGameInstance::HandleUserLoginChanged(int32 GameUserIndex, ELoginSta
 
 	// Find the local player associated with this unique net id
 	ULocalPlayer * LocalPlayer = FindLocalPlayerFromUniqueNetId( UserId );
+
+	LocalPlayerOnlineStatus[GameUserIndex] = LoginStatus;
 
 	// If this user is signed out, but was previously signed in, punt to welcome (or remove splitscreen if that makes sense)
 	if ( LocalPlayer != NULL )
@@ -1282,7 +1430,7 @@ void UShooterGameInstance::HandleUserLoginChanged(int32 GameUserIndex, ELoginSta
 			LabelPlayerAsQuitter(LocalPlayer);
 
 			// Check to see if this was the master, or if this was a split-screen player on the client
-			if ( LocalPlayer == GetFirstGamePlayer() || GetIsOnline() )
+			if ( LocalPlayer == GetFirstGamePlayer() || GetOnlineMode() != EOnlineMode::Offline )
 			{
 				HandleSignInChangeMessaging();
 			}
@@ -1342,7 +1490,7 @@ void UShooterGameInstance::HandleAppSuspend()
 		for (int i = 0; i < LocalPlayers.Num(); ++i)
 		{
 			auto ShooterPC = Cast<AShooterPlayerController>(LocalPlayers[i]->PlayerController);
-			if (ShooterPC)
+			if (ShooterPC && GameState)
 			{
 				// Assuming you can't win if you quit early
 				ShooterPC->ClientSendRoundEndEvent(false, GameState->ElapsedTime);
@@ -1361,7 +1509,7 @@ void UShooterGameInstance::HandleAppResume()
 
 		for ( int32 i = 0; i < LocalPlayers.Num(); ++i )
 		{
-			if ( LocalPlayers[i]->GetCachedUniqueNetId().IsValid() && !IsLocalPlayerOnline( LocalPlayers[i] ) )
+			if ( LocalPlayers[i]->GetCachedUniqueNetId().IsValid() && LocalPlayerOnlineStatus[i] == ELoginStatus::LoggedIn && !IsLocalPlayerOnline( LocalPlayers[i] ) )
 			{
 				UE_LOG( LogOnline, Log, TEXT( "UShooterGameInstance::HandleAppResume: Signed out during resume." ) );
 				HandleSignInChangeMessaging();
@@ -1546,9 +1694,14 @@ TSharedPtr< const FUniqueNetId > UShooterGameInstance::GetUniqueNetIdFromControl
 	return nullptr;
 }
 
-void UShooterGameInstance::SetIsOnline(bool bInIsOnline)
+void UShooterGameInstance::SetOnlineMode(EOnlineMode InOnlineMode)
 {
-	bIsOnline = bInIsOnline;
+	OnlineMode = InOnlineMode;
+	UpdateUsingMultiplayerFeatures(InOnlineMode == EOnlineMode::Online);
+}
+
+void UShooterGameInstance::UpdateUsingMultiplayerFeatures(bool bIsUsingMultiplayerFeatures)
+{
 	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
 
 	if (OnlineSub)
@@ -1557,12 +1710,12 @@ void UShooterGameInstance::SetIsOnline(bool bInIsOnline)
 		{
 			ULocalPlayer* LocalPlayer = LocalPlayers[i];
 
-			TSharedPtr<const FUniqueNetId> PlayerId = LocalPlayer->GetPreferredUniqueNetId();
+			FUniqueNetIdRepl PlayerId = LocalPlayer->GetPreferredUniqueNetId();
 			if (PlayerId.IsValid())
 			{
-				OnlineSub->SetUsingMultiplayerFeatures(*PlayerId, bIsOnline);
+				OnlineSub->SetUsingMultiplayerFeatures(*PlayerId, bIsUsingMultiplayerFeatures);
 			}
-		}		
+		}
 	}
 }
 
@@ -1600,6 +1753,30 @@ bool UShooterGameInstance::IsLocalPlayerOnline(ULocalPlayer* LocalPlayer)
 				{
 					return true;
 				}
+			}
+		}
+	}
+
+	return false;
+}
+
+bool UShooterGameInstance::IsLocalPlayerSignedIn(ULocalPlayer* LocalPlayer)
+{
+	if (LocalPlayer == NULL)
+	{
+		return false;
+	}
+
+	const auto OnlineSub = IOnlineSubsystem::Get();
+	if (OnlineSub)
+	{
+		const auto IdentityInterface = OnlineSub->GetIdentityInterface();
+		if (IdentityInterface.IsValid())
+		{
+			auto UniqueId = LocalPlayer->GetCachedUniqueNetId();
+			if (UniqueId.IsValid())
+			{
+				return true;
 			}
 		}
 	}
@@ -1661,6 +1838,37 @@ bool UShooterGameInstance::ValidatePlayerForOnlinePlay(ULocalPlayer* LocalPlayer
 	return true;
 }
 
+bool UShooterGameInstance::ValidatePlayerIsSignedIn(ULocalPlayer* LocalPlayer)
+{
+	// Get the viewport
+	UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
+
+	if (!IsLocalPlayerSignedIn(LocalPlayer))
+	{
+		// Don't let them play online if they aren't online
+		if (ShooterViewport != NULL)
+		{
+			const FText Msg = NSLOCTEXT("NetworkFailures", "MustBeSignedIn", "You must be signed in to play online");
+			const FText OKButtonString = NSLOCTEXT("DialogButtons", "OKAY", "OK");
+
+			ShooterViewport->ShowDialog(
+				NULL,
+				EShooterDialogType::Generic,
+				Msg,
+				OKButtonString,
+				FText::GetEmpty(),
+				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric),
+				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric)
+			);
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
+
 FReply UShooterGameInstance::OnConfirmGeneric()
 {
 	UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
@@ -1713,7 +1921,7 @@ void UShooterGameInstance::DisplayOnlinePrivilegeFailureDialogs(const FUniqueNet
 	{
 		for (auto It = GEngine->GetLocalPlayerIterator(GetWorld()); It; ++It)
 		{
-			TSharedPtr<const FUniqueNetId> OtherId = (*It)->GetPreferredUniqueNetId();
+			FUniqueNetIdRepl OtherId = (*It)->GetPreferredUniqueNetId();
 			if (OtherId.IsValid())
 			{
 				if (UserId == (*OtherId))
@@ -1806,6 +2014,9 @@ void UShooterGameInstance::FinishSessionCreation(EOnJoinSessionCompleteResult::T
 {
 	if (Result == EOnJoinSessionCompleteResult::Success)
 	{
+		// This will send any Play Together invites if necessary, or do nothing.
+		SendPlayTogetherInvites();
+
 		// Travel to the specified match URL
 		GetWorld()->ServerTravel(TravelURL);
 	}
@@ -1817,11 +2028,122 @@ void UShooterGameInstance::FinishSessionCreation(EOnJoinSessionCompleteResult::T
 	}
 }
 
+FString UShooterGameInstance::GetQuickMatchUrl()
+{
+	static const FString QuickMatchUrl(TEXT("/Game/Maps/Highrise?game=TDM?listen"));
+	return QuickMatchUrl;
+}
+
 void UShooterGameInstance::BeginHostingQuickMatch()
 {
 	ShowLoadingScreen();
 	GotoState(ShooterGameInstanceState::Playing);
 
 	// Travel to the specified match URL
-	GetWorld()->ServerTravel(TEXT("/Game/Maps/Highrise?game=TDM?listen"));	
+	GetWorld()->ServerTravel(GetQuickMatchUrl());	
+}
+
+void UShooterGameInstance::OnPlayTogetherEventReceived(const int32 UserIndex, const TArray<TSharedPtr<const FUniqueNetId>>& UserIdList)
+{
+	PlayTogetherInfo = FShooterPlayTogetherInfo(UserIndex, UserIdList);
+
+	const IOnlineSubsystem* const OnlineSub = IOnlineSubsystem::Get();
+	check(OnlineSub);
+
+	const IOnlineSessionPtr SessionInterface = OnlineSub->GetSessionInterface();
+	check(SessionInterface.IsValid());
+
+	// If we have available slots to accomedate the whole party in our current sessions, we should send invites to the existing one
+	// instead of a new one according to Sony's best practices.
+	const FNamedOnlineSession* const Session = SessionInterface->GetNamedSession(NAME_GameSession);
+	if (Session != nullptr && Session->NumOpenPrivateConnections + Session->NumOpenPublicConnections >= UserIdList.Num())
+	{
+		SendPlayTogetherInvites();
+	}
+	// Always handle Play Together in the main menu since the player has session customization options.
+	else if (CurrentState == ShooterGameInstanceState::MainMenu)
+	{
+		MainMenuUI->OnPlayTogetherEventReceived();
+	}
+	else if (CurrentState == ShooterGameInstanceState::WelcomeScreen)
+	{
+		StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateUObject(this, &UShooterGameInstance::OnUserCanPlayTogether), EUserPrivileges::CanPlayOnline, PendingInvite.UserId);
+	}
+	else
+	{
+		GotoState(ShooterGameInstanceState::MainMenu);
+	}
+}
+
+void UShooterGameInstance::SendPlayTogetherInvites()
+{
+	const IOnlineSubsystem* const OnlineSub = IOnlineSubsystem::Get();
+	check(OnlineSub);
+
+	const IOnlineSessionPtr SessionInterface = OnlineSub->GetSessionInterface();
+	check(SessionInterface.IsValid());
+
+	if (PlayTogetherInfo.UserIndex != -1)
+	{
+		for (const ULocalPlayer* LocalPlayer : LocalPlayers)
+		{
+			if (LocalPlayer->GetControllerId() == PlayTogetherInfo.UserIndex)
+			{
+				FUniqueNetIdRepl PlayerId = LocalPlayer->GetPreferredUniqueNetId();
+				if (PlayerId.IsValid())
+				{
+					// Automatically send invites to friends in the player's PS4 party to conform with Play Together requirements
+					for (const TSharedPtr<const FUniqueNetId>& FriendId : PlayTogetherInfo.UserIdList)
+					{
+						SessionInterface->SendSessionInviteToFriend(*PlayerId, NAME_GameSession, *FriendId.ToSharedRef());
+					}
+				}
+
+			}
+		}
+
+		PlayTogetherInfo = FShooterPlayTogetherInfo();
+	}
+}
+
+void UShooterGameInstance::ReceivedNetworkEncryptionToken(const FString& EncryptionToken, const FOnEncryptionKeyResponse& Delegate)
+{
+	// This is a simple implementation to demonstrate using encryption for game traffic using a hardcoded key.
+	// For a complete implementation, you would likely want to retrieve the encryption key from a secure source,
+	// such as from a web service over HTTPS. This could be done in this function, even asynchronously - just
+	// call the response delegate passed in once the key is known. The contents of the EncryptionToken is up to the user,
+	// but it will generally contain information used to generate a unique encryption key, such as a user and/or session ID.
+
+	FEncryptionKeyResponse Response(EEncryptionResponse::Failure, TEXT("Unknown encryption failure"));
+
+	if (EncryptionToken.IsEmpty())
+	{
+		Response.Response = EEncryptionResponse::InvalidToken;
+		Response.ErrorMsg = TEXT("Encryption token is empty.");
+	}
+	else
+	{
+		Response.Response = EEncryptionResponse::Success;
+		Response.EncryptionKey = DebugTestEncryptionKey;
+	}
+
+	Delegate.ExecuteIfBound(Response);
+
+}
+
+void UShooterGameInstance::ReceivedNetworkEncryptionAck(const FOnEncryptionKeyResponse& Delegate)
+{
+	// This is a simple implementation to demonstrate using encryption for game traffic using a hardcoded key.
+	// For a complete implementation, you would likely want to retrieve the encryption key from a secure source,
+	// such as from a web service over HTTPS. This could be done in this function, even asynchronously - just
+	// call the response delegate passed in once the key is known.
+
+	FEncryptionKeyResponse Response;
+
+	TArray<uint8> FakeKey;
+	
+	Response.Response = EEncryptionResponse::Success;
+	Response.EncryptionKey = DebugTestEncryptionKey;
+
+	Delegate.ExecuteIfBound(Response);
 }

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterStyle.h"
@@ -57,10 +57,11 @@ void SShooterConfirmationDialog::Construct( const FArguments& InArgs )
 			[
 				SNew( SButton )
 				.ContentPadding(100)
-				.OnClicked(InArgs._OnConfirmClicked)
+				.OnClicked(this, &SShooterConfirmationDialog::OnConfirmHandler)
 				.Text(InArgs._ConfirmText)			
 				.TextStyle(FShooterStyle::Get(), "ShooterGame.MenuHeaderTextStyle")
 				.ButtonStyle(ButtonStyle)
+				.IsFocusable(false)
 			]
 
 			+SHorizontalBox::Slot()
@@ -76,6 +77,7 @@ void SShooterConfirmationDialog::Construct( const FArguments& InArgs )
 					.TextStyle(FShooterStyle::Get(), "ShooterGame.MenuHeaderTextStyle")
 					.ButtonStyle(ButtonStyle)
 					.Visibility(InArgs._CancelText.IsEmpty() == false ? EVisibility::Visible : EVisibility::Collapsed)
+					.IsFocusable(false)
 				]	
 		]			
 	];
@@ -89,6 +91,11 @@ bool SShooterConfirmationDialog::SupportsKeyboardFocus() const
 FReply SShooterConfirmationDialog::OnFocusReceived(const FGeometry& MyGeometry, const FFocusEvent& InFocusEvent)
 {
 	return FReply::Handled().ReleaseMouseCapture().SetUserFocus(SharedThis(this), EFocusCause::SetDirectly, true);
+}
+
+FReply SShooterConfirmationDialog::OnConfirmHandler()
+{
+	return ExecuteConfirm(FSlateApplication::Get().GetUserIndexForKeyboard());
 }
 
 FReply SShooterConfirmationDialog::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& KeyEvent)
@@ -124,59 +131,66 @@ FReply SShooterConfirmationDialog::OnKeyDown(const FGeometry& MyGeometry, const 
 	}
 
 	// For testing on PC
-	if ((Key == EKeys::Enter || Key == EKeys::Gamepad_FaceButton_Bottom) && !KeyEvent.IsRepeat())
+	if ((Key == EKeys::Enter || Key == EKeys::Virtual_Accept) && !KeyEvent.IsRepeat())
 	{
-		if(OnConfirm.IsBound())
-		{
-			//these two cases should be combined when we move to using PlatformUserIDs rather than ControllerIDs.
-#if PLATFORM_PS4
-			bool bExecute = false;
-			// For controller reconnection, bind the confirming controller to the owner of this dialog
-			if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
-			{
-				const auto OnlineSub = IOnlineSubsystem::Get();
-				if (OnlineSub)
-				{
-					const auto IdentityInterface = OnlineSub->GetIdentityInterface();
-					if (IdentityInterface.IsValid())
-					{
-						TSharedPtr<const FUniqueNetId> IncomingUserId = IdentityInterface->GetUniquePlayerId(UserIndex);
-						TSharedPtr<const FUniqueNetId> DisconnectedId = PlayerOwner->GetCachedUniqueNetId();
-
-						if (*IncomingUserId == *DisconnectedId)
-						{
-							PlayerOwner->SetControllerId(UserIndex);
-							bExecute = true;
-						}
-					}
-				}
-			}
-			else
-			{
-				bExecute = true;
-			}
-
-			if (bExecute)
-			{
-				return OnConfirm.Execute();
-			}
-#else
-			// For controller reconnection, bind the confirming controller to the owner of this dialog
-			if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
-			{
-				PlayerOwner->SetControllerId(UserIndex);
-			}
-
-			return OnConfirm.Execute();
-#endif
-		}
+		return ExecuteConfirm(UserIndex);
 	}
-	else if (Key == EKeys::Escape || Key == EKeys::Gamepad_FaceButton_Right)
+	else if (Key == EKeys::Escape || Key == EKeys::Virtual_Back)
 	{
 		if(OnCancel.IsBound())
 		{
 			return OnCancel.Execute();
 		}
+	}
+
+	return FReply::Unhandled();
+}
+
+FReply SShooterConfirmationDialog::ExecuteConfirm(const int32 UserIndex)
+{
+	if (OnConfirm.IsBound())
+	{
+		//these two cases should be combined when we move to using PlatformUserIDs rather than ControllerIDs.
+#if PLATFORM_PS4
+		bool bExecute = false;
+		// For controller reconnection, bind the confirming controller to the owner of this dialog
+		if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
+		{
+			const auto OnlineSub = IOnlineSubsystem::Get();
+			if (OnlineSub)
+			{
+				const auto IdentityInterface = OnlineSub->GetIdentityInterface();
+				if (IdentityInterface.IsValid())
+				{
+					TSharedPtr<const FUniqueNetId> IncomingUserId = IdentityInterface->GetUniquePlayerId(UserIndex);
+					FUniqueNetIdRepl DisconnectedId = PlayerOwner->GetCachedUniqueNetId();
+
+					if (*IncomingUserId == *DisconnectedId)
+					{
+						PlayerOwner->SetControllerId(UserIndex);
+						bExecute = true;
+					}
+				}
+			}
+		}
+		else
+		{
+			bExecute = true;
+		}
+
+		if (bExecute)
+		{
+			return OnConfirm.Execute();
+		}
+#else
+		// For controller reconnection, bind the confirming controller to the owner of this dialog
+		if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
+		{
+			PlayerOwner->SetControllerId(UserIndex);
+		}
+
+		return OnConfirm.Execute();
+#endif
 	}
 
 	return FReply::Unhandled();

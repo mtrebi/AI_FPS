@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -67,7 +67,7 @@ public:
 	void UpdateSearchStatus();
 
 	/** Starts searching for servers */
-	void BeginServerSearch(bool bLANMatch, const FString& InMapFilterName);
+	void BeginServerSearch(bool bLANMatch, bool bIsDedicatedServer, const FString& InMapFilterName);
 
 	/** Called when server search is finished */
 	void OnServerSearchFinished();
@@ -95,8 +95,17 @@ protected:
 	/** Whether last searched for LAN (so spacebar works) */
 	bool bLANMatchSearch;
 
+	/** Whether last searched for Dedicated Server (so spacebar works) */
+	bool bDedicatedServer;
+
 	/** Whether we're searching for servers */
 	bool bSearchingForServers;
+
+	/** Time the last search began */
+	double LastSearchTime;
+
+	/** Minimum time between searches (platform dependent) */
+	double MinTimeBetweenSearches;
 
 	/** action bindings array */
 	TArray< TSharedPtr<FServerEntry> > ServerList;

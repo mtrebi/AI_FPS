@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
-#include "Runtime/Engine/Classes/AI/Navigation/NavFilters/NavigationQueryFilter.h"
+#include "NavFilters/NavigationQueryFilter.h"
 #include "Runtime/Navmesh/Public/Detour/DetourNavMeshQuery.h"
 #include "Runtime/Navmesh/Public/Detour/DetourNavMesh.h"
-#include "AI/Navigation/PImplRecastNavMesh.h"
-#include "AI/Navigation/RecastNavMesh.h"
+#include "NavMesh/PImplRecastNavMesh.h"
+#include "NavMesh/RecastNavMesh.h"
 
 #include "MyRecastNavMesh.generated.h"
 

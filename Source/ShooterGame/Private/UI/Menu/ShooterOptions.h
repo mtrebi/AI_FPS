@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 #pragma once
 #include "SlateBasics.h"
 #include "SlateExtras.h"
@@ -71,6 +71,9 @@ protected:
 	/** aim sensitivity option changed handler */
 	void AimSensitivityOptionChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex);
 
+	/** controller vibration toggle handler */
+	void ToggleVibration(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex);
+
 	/** invert y axis option changed handler */
 	void InvertYAxisOptionChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex);
 
@@ -100,6 +103,9 @@ protected:
 
 	/** Owning player controller */
 	ULocalPlayer* PlayerOwner;
+
+	/** holds vibration option menu item */
+	TSharedPtr<FShooterMenuItem> VibrationOption;
 
 	/** holds invert y axis option menu item */
 	TSharedPtr<FShooterMenuItem> InvertYAxisOption;
@@ -133,6 +139,9 @@ protected:
 
 	/** full screen setting set in options */
 	EWindowMode::Type bFullScreenOpt;
+
+	/** controller vibration setting set in options */
+	uint8 bVibrationOpt : 1;
 
 	/** invert mouse setting set in options */
 	uint8 bInvertYAxisOpt : 1;

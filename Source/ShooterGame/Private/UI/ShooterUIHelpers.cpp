@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterUIHelpers.h"
@@ -16,7 +16,7 @@ FText ShooterUIHelpers::GetProfileOpenText() const
 #endif
 }
 
-bool ShooterUIHelpers::ProfileOpenedUI(const FUniqueNetId& Requestor, const FUniqueNetId& Requestee, const IOnlineExternalUI::FOnProfileUIClosedDelegate* Delegate) const
+bool ShooterUIHelpers::ProfileOpenedUI(const FUniqueNetId& Requestor, const FUniqueNetId& Requestee, const FOnProfileUIClosedDelegate* Delegate) const
 {
 	const auto OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
@@ -33,7 +33,7 @@ bool ShooterUIHelpers::ProfileOpenedUI(const FUniqueNetId& Requestor, const FUni
 					// do nothing
 				}
 			};
-			return ExternalUI->ShowProfileUI(Requestor, Requestee, Delegate ? *Delegate : IOnlineExternalUI::FOnProfileUIClosedDelegate::CreateStatic(&Local::DummyOnProfileOpenedUIClosedDelegate) );
+			return ExternalUI->ShowProfileUI(Requestor, Requestee, Delegate ? *Delegate : FOnProfileUIClosedDelegate::CreateStatic(&Local::DummyOnProfileOpenedUIClosedDelegate) );
 		}
 	}
 	return false;
@@ -51,7 +51,7 @@ FText ShooterUIHelpers::GetProfileSwapText() const
 #endif*/
 }
 
-bool ShooterUIHelpers::ProfileSwapUI(const int ControllerIndex, bool bShowOnlineOnly, const IOnlineExternalUI::FOnLoginUIClosedDelegate* Delegate) const
+bool ShooterUIHelpers::ProfileSwapUI(const int ControllerIndex, bool bShowOnlineOnly, const FOnLoginUIClosedDelegate* Delegate) const
 {
 	const auto OnlineSub = IOnlineSubsystem::Get();
 	if (OnlineSub)
@@ -63,12 +63,12 @@ bool ShooterUIHelpers::ProfileSwapUI(const int ControllerIndex, bool bShowOnline
 			// Create a dummy delegate, if one wasn't specified
 			struct Local
 			{
-				static void DummyOnProfileSwapUIClosedDelegate(TSharedPtr<const FUniqueNetId> UniqueId, const int InControllerIndex)
+				static void DummyOnProfileSwapUIClosedDelegate(TSharedPtr<const FUniqueNetId> UniqueId, const int InControllerIndex, const FOnlineError& Error)
 				{
 					// do nothing
 				}
 			};
-			return ExternalUI->ShowLoginUI(ControllerIndex, bShowOnlineOnly, Delegate ? *Delegate : IOnlineExternalUI::FOnLoginUIClosedDelegate::CreateStatic(&Local::DummyOnProfileSwapUIClosedDelegate) );
+			return ExternalUI->ShowLoginUI(ControllerIndex, bShowOnlineOnly, false, Delegate ? *Delegate : FOnLoginUIClosedDelegate::CreateStatic(&Local::DummyOnProfileSwapUIClosedDelegate) );
 		}
 	}
 	return false;

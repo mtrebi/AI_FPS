@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "AI/Navigation/NavFilters/NavigationQueryFilter.h"
+#include "NavFilters/NavigationQueryFilter.h"
 #include "MyNavigationQueryFilter.generated.h"
 
 /**
@@ -12,6 +12,6 @@ UCLASS()
 class SHOOTERGAME_API UMyNavigationQueryFilter : public UNavigationQueryFilter
 {
 	GENERATED_UCLASS_BODY()
-	
-	virtual void InitializeFilter(const ANavigationData& NavData, FNavigationQueryFilter& Filter) const override;
+		                        //const ANavigationData& NavData, const UObject* Querier, FNavigationQueryFilter& Filter
+	virtual void InitializeFilter(const ANavigationData& NavData, const UObject* Querier, FNavigationQueryFilter& Filter) const override;
 };

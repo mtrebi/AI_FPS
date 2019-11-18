@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -101,7 +101,7 @@ class SShooterScoreboardWidget : public SBorder
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 	/** Called when the scoreboard is displayed, Stores the name and whether or not a player is currently talking */
-	void StoreTalkingPlayerData(FString PlayerName, bool bIsTalking);
+	void StoreTalkingPlayerData(const FUniqueNetId& PlayerId, bool bIsTalking);
 
 protected:
 
@@ -137,6 +137,9 @@ protected:
 
 	/** get player name */
 	FText GetPlayerName(const FTeamPlayer TeamPlayer) const;
+
+	/** get whether or not the player should be displayed on the scoreboard */
+	bool ShouldPlayerBeDisplayed(const FTeamPlayer TeamPlayer) const;
 
 	/** get player color */
 	FSlateColor GetPlayerColor(const FTeamPlayer TeamPlayer) const;
@@ -223,7 +226,7 @@ protected:
 	TArray<int32> LastTeamPlayerCount;
 
 	/** holds talking player data */
-	TArray<TPair<FString, bool>> PlayersTalkingThisFrame;
+	TArray<TPair<TSharedRef<const FUniqueNetId>, bool>> PlayersTalkingThisFrame;
 
 	/** holds player info rows */
 	TSharedPtr<SVerticalBox> ScoreboardData;

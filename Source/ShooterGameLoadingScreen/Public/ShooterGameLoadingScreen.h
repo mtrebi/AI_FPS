@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #ifndef __SHOOTERGAMELOADINGSCREEN_H__
 #define __SHOOTERGAMELOADINGSCREEN_H__

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -6,9 +6,11 @@ using UnrealBuildTool;
 
 public class ShooterGameLoadingScreen : ModuleRules
 {
-    public ShooterGameLoadingScreen(TargetInfo Target)
+    public ShooterGameLoadingScreen(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PrivateIncludePaths.Add("../../ShooterGame/Source/ShooterGameLoadingScreen/Private");
+		PrivatePCHHeaderFile = "Public/ShooterGameLoadingScreen.h";
+
+		PCHUsage = PCHUsageMode.UseSharedPCHs;
 
         PrivateDependencyModuleNames.AddRange(
 			new string[] {

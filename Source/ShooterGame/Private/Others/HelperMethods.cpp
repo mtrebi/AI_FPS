@@ -326,9 +326,9 @@ FRecastQueryFilter_Example* HelperMethods::GetCustomFilter() {
 	FRecastQueryFilter_Example* MyFRecastQueryFilter = NULL;
 	UWorld * World = GetWorld();
 	if (World) {
-		UNavigationSystem* NavSys = World->GetNavigationSystem();
+		UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 		if (NavSys) {
-			ANavigationData* NavData = NavSys->GetMainNavData(FNavigationSystem::Create);
+			ANavigationData* NavData = NavSys->GetDefaultNavDataInstance(FNavigationSystem::Create);
 			AMyRecastNavMesh* MyNavMesh = Cast<AMyRecastNavMesh>(NavData);
 			MyFRecastQueryFilter = MyNavMesh->GetCustomFilter();
 		}

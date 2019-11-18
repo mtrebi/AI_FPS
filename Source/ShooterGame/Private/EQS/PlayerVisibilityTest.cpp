@@ -29,7 +29,7 @@ void UPlayerVisibilityTest::RunTest(FEnvQueryInstance& QueryInstance) const
 		return;
 	}
 
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	const FVector PlayerLocation = HelperMethods::GetPlayerPositionFromAI(World);
 	const FVector EyesLocation = FVector(PlayerLocation.X, PlayerLocation.Y, HelperMethods::EYES_POS_Z);
 	const FVector PlayerForwardVector = HelperMethods::GetPlayerForwardVectorFromAI(World);
@@ -42,7 +42,7 @@ void UPlayerVisibilityTest::RunTest(FEnvQueryInstance& QueryInstance) const
 		for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
 		{
 			bool IsVisible = false;
-			const FVector Location = GetItemLocation(QueryInstance, *It);
+			const FVector Location = GetItemLocation(QueryInstance, It);
 			for (auto It2 = PlayerVisibility.CreateConstIterator(); It2; ++It2) {
 				const Triangle Triangle = *It2;
 				if (Triangle.PointInsideTriangle(FVector2D(Location.X, Location.Y))) {
@@ -65,7 +65,7 @@ void UPlayerVisibilityTest::RunTest(FEnvQueryInstance& QueryInstance) const
 
 		for (FEnvQueryInstance::ItemIterator It2(this, QueryInstance); It2; ++It2)
 		{
-			const FVector Location = GetItemLocation(QueryInstance, *It2);
+			const FVector Location = GetItemLocation(QueryInstance, It2);
 			const FVector UpLocation = FVector(Location.X, Location.Y, 150);
 			const bool BlockingHitFound = World->LineTraceSingleByChannel(OutHit, EyesLocation, UpLocation, ECollisionChannel::ECC_Visibility, CollisionParams);
 

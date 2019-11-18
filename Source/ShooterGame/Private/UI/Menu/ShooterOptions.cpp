@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterOptions.h"
@@ -86,10 +86,15 @@ void FShooterOptions::Construct(ULocalPlayer* InPlayerOwner)
 	GammaOption = MenuHelper::AddMenuOptionSP(OptionsItem,LOCTEXT("Gamma", "GAMMA CORRECTION"),GammaList, this, &FShooterOptions::GammaOptionChanged);
 	AimSensitivityOption = MenuHelper::AddMenuOptionSP(OptionsItem,LOCTEXT("AimSensitivity", "AIM SENSITIVITY"),SensitivityList, this, &FShooterOptions::AimSensitivityOptionChanged);
 	InvertYAxisOption = MenuHelper::AddMenuOptionSP(OptionsItem,LOCTEXT("InvertYAxis", "INVERT Y AXIS"),OnOffList, this, &FShooterOptions::InvertYAxisOptionChanged);
+	VibrationOption = MenuHelper::AddMenuOptionSP(OptionsItem, LOCTEXT("Vibration", "VIBRATION"), OnOffList, this, &FShooterOptions::ToggleVibration);
+	
 	MenuHelper::AddMenuItemSP(OptionsItem,LOCTEXT("ApplyChanges", "APPLY CHANGES"), this, &FShooterOptions::OnApplySettings);
 
 	//Do not allow to set aim sensitivity to 0
 	AimSensitivityOption->MinMultiChoiceIndex = MinSensitivity;
+    
+    //Default vibration to On.
+	VibrationOption->SelectedMultiChoice = 1;
 
 	UserSettings = CastChecked<UShooterGameUserSettings>(GEngine->GetGameUserSettings());
 	ResolutionOpt = UserSettings->GetScreenResolution();
@@ -102,12 +107,33 @@ void FShooterOptions::Construct(ULocalPlayer* InPlayerOwner)
 		bInvertYAxisOpt = PersistentUser->GetInvertedYAxis();
 		SensitivityOpt = PersistentUser->GetAimSensitivity();
 		GammaOpt = PersistentUser->GetGamma();
+		bVibrationOpt = PersistentUser->GetVibration();
 	}
 	else
 	{
+		bVibrationOpt = true;
 		bInvertYAxisOpt = false;
 		SensitivityOpt = 1.0f;
 		GammaOpt = 2.2f;
+	}
+
+	if (ensure(PlayerOwner != nullptr))
+	{
+		APlayerController* BaseController = Cast<APlayerController>(UGameplayStatics::GetPlayerController(PlayerOwner->GetWorld(), GetOwnerUserIndex()));
+		AShooterPlayerController* ShooterPlayerController = Cast<AShooterPlayerController>(UGameplayStatics::GetPlayerController(PlayerOwner->GetWorld(), GetOwnerUserIndex()));
+		ensure(BaseController);
+		if (BaseController)
+		{
+			if (ShooterPlayerController)
+			{
+				ShooterPlayerController->SetIsVibrationEnabled(bVibrationOpt);
+			}
+			else
+			{
+				// We are in the menus and therefore don't need to do anything as the controller is different
+				// and can't store the vibration setting.
+			}
+		}
 	}
 }
 
@@ -125,6 +151,7 @@ void FShooterOptions::ApplySettings()
 		PersistentUser->SetAimSensitivity(SensitivityOpt);
 		PersistentUser->SetInvertedYAxis(bInvertYAxisOpt);
 		PersistentUser->SetGamma(GammaOpt);
+		PersistentUser->SetVibration(bVibrationOpt);
 		PersistentUser->TellInputAboutKeybindings();
 
 		PersistentUser->SaveIfDirty();
@@ -251,6 +278,7 @@ void FShooterOptions::UpdateOptions()
 		bInvertYAxisOpt = PersistentUser->GetInvertedYAxis();
 		SensitivityOpt = PersistentUser->GetAimSensitivity();
 		GammaOpt = PersistentUser->GetGamma();
+		bVibrationOpt = PersistentUser->GetVibration();
 	} 
 
 	InvertYAxisOption->SelectedMultiChoice =  GetCurrentMouseYAxisInvertedIndex();
@@ -300,7 +328,7 @@ void FShooterOptions::InfiniteClipOptionChanged(TSharedPtr<FShooterMenuItem> Men
 void FShooterOptions::FreezeTimerOptionChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex)
 {
 	UWorld* const World = PlayerOwner->GetWorld();
-	AShooterGameState* const GameState = World ? Cast<AShooterGameState>(World->GameState) : nullptr;
+	AShooterGameState* const GameState = World ? World->GetGameState<AShooterGameState>() : nullptr;
 	if (GameState)
 	{
 		GameState->bTimerPaused = MultiOptionIndex > 0  ? true : false;
@@ -350,6 +378,26 @@ void FShooterOptions::GammaOptionChanged(TSharedPtr<FShooterMenuItem> MenuItem, 
 {
 	GammaOpt = 2.2f + 2.0f * (-0.5f + MultiOptionIndex / 100.0f);
 	GEngine->DisplayGamma = GammaOpt;
+}
+
+void FShooterOptions::ToggleVibration(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex)
+{
+	bVibrationOpt = MultiOptionIndex > 0 ? true : false;
+	APlayerController* BaseController = Cast<APlayerController>(UGameplayStatics::GetPlayerController(PlayerOwner->GetWorld(), GetOwnerUserIndex()));
+	AShooterPlayerController* ShooterPlayerController = Cast<AShooterPlayerController>(UGameplayStatics::GetPlayerController(PlayerOwner->GetWorld(), GetOwnerUserIndex()));
+	ensure(BaseController);
+    if(BaseController)
+    {
+		if (ShooterPlayerController)
+		{
+			ShooterPlayerController->SetIsVibrationEnabled(bVibrationOpt);
+		}
+		else
+		{
+			// We are in the menus and therefore don't need to do anything as the controller is different
+			// and can't store the vibration setting.
+		}
+    }
 }
 
 void FShooterOptions::InvertYAxisOptionChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex)

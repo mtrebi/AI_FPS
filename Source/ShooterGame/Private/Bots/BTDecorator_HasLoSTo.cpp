@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "BTDecorator_HasLoSTo.h"
@@ -34,7 +34,7 @@ bool UBTDecorator_HasLoSTo::CalculateRawConditionValue(class UBehaviorTreeCompon
 
 	bool bHasPath = false;
 
-	const UNavigationSystem* NavSys = UNavigationSystem::GetCurrent(OwnerComp->GetWorld());
+	const UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(OwnerComp->GetWorld());
 	if (NavSys && bHasPointA && bHasPointB)
 	{
 		const AAIController* AIOwner = Cast<AAIController>(OwnerComp->GetOwner());
@@ -102,7 +102,6 @@ bool UBTDecorator_HasLoSTo::CalculateRawConditionValue(UBehaviorTreeComponent& O
 
 bool UBTDecorator_HasLoSTo::LOSTrace(AActor* InActor, AActor* InEnemyActor, const FVector& EndLocation) const
 {
-	static FName LosTag = FName(TEXT("AILosTrace"));
 	AShooterAIController* MyController = Cast<AShooterAIController>(InActor);
 	AShooterBot* MyBot = MyController ? Cast<AShooterBot>(MyController->GetPawn()) : NULL; 
 
@@ -111,8 +110,7 @@ bool UBTDecorator_HasLoSTo::LOSTrace(AActor* InActor, AActor* InEnemyActor, cons
 		if (MyBot != NULL)
 		{
 			// Perform trace to retrieve hit info
-			FCollisionQueryParams TraceParams(LosTag, true, InActor);
-			TraceParams.bTraceAsyncScene = true;
+			FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(AILosTrace), true, InActor);
 			
 			TraceParams.bReturnPhysicalMaterial = true;
 			TraceParams.AddIgnoredActor(MyBot);
@@ -135,9 +133,9 @@ bool UBTDecorator_HasLoSTo::LOSTrace(AActor* InActor, AActor* InEnemyActor, cons
 						// Check the team of us against the team of the actor we hit if we are able. If they dont match good to go.
 						ACharacter* HitChar = Cast<ACharacter>(HitActor);
 						if ( (HitChar != NULL)
-							&& (MyController->PlayerState != NULL) && (HitChar->PlayerState != NULL))
+							&& (MyController->PlayerState != NULL) && (HitChar->GetPlayerState() != NULL))
 						{
-							AShooterPlayerState* HitPlayerState = Cast<AShooterPlayerState>(HitChar->PlayerState);
+							AShooterPlayerState* HitPlayerState = Cast<AShooterPlayerState>(HitChar->GetPlayerState());
 							AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(MyController->PlayerState);
 							if ((HitPlayerState != NULL) && (MyPlayerState != NULL))
 							{
@@ -156,7 +154,7 @@ bool UBTDecorator_HasLoSTo::LOSTrace(AActor* InActor, AActor* InEnemyActor, cons
 						// We were not given an actor - so check of the distance between what we hit and the target. If what we hit is further away than the target we should be able to hit our target.
 						FVector HitDelta = Hit.ImpactPoint - StartLocation;
 						FVector TargetDelta = EndLocation - StartLocation;
-						if (TargetDelta.Size() < HitDelta.Size())
+						if (TargetDelta.SizeSquared() < HitDelta.SizeSquared())
 						{
 							bHasLOS = true;
 						}

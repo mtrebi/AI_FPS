@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -21,4 +21,14 @@ class USoundNodeLocalPlayer : public USoundNode
 	virtual FText GetInputPinName(int32 PinIndex) const override;
 #endif
 	// End USoundNode interface.
+
+	static TMap<uint32, bool>& GetLocallyControlledActorCache()
+	{
+		check(IsInAudioThread());
+		return LocallyControlledActorCache;
+	}
+
+private:
+
+	static TMap<uint32, bool> LocallyControlledActorCache;
 };

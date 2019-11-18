@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 #pragma once
 #include "SlateBasics.h"
 #include "SlateExtras.h"
@@ -7,6 +7,7 @@
 #include "Widgets/SShooterServerList.h"
 #include "Widgets/SShooterDemoList.h"
 #include "Widgets/SShooterLeaderboard.h"
+#include "Widgets/SShooterOnlineStore.h"
 #include "Widgets/SShooterSplitScreenLobbyWidget.h"
 #include "ShooterOptions.h"
 
@@ -28,9 +29,10 @@ public:
 
 	/** TickableObject Functions */
 	virtual void Tick(float DeltaTime) override;	
-	virtual bool IsTickable() const override;	
+	virtual ETickableTickType GetTickableTickType() const override { return ETickableTickType::Always; }
 	virtual TStatId GetStatId() const override;
-	virtual bool IsTickableWhenPaused() const override;	
+	virtual bool IsTickableWhenPaused() const override { return true; }	
+	virtual UWorld* GetTickableGameObjectWorld() const override;
 
 	/** Returns the player that owns the main menu. */
 	ULocalPlayer* GetPlayerOwner() const;
@@ -40,6 +42,9 @@ public:
 
 	/** Returns the string name of the currently selected map */
 	FString GetMapName() const;
+
+	/** Called if a play together invite is sent from the PS4 system */
+	void OnPlayTogetherEventReceived();
 
 protected:
 
@@ -86,11 +91,17 @@ protected:
 	/** leaderboard widget */
 	TSharedPtr<class SShooterLeaderboard> LeaderboardWidget;
 
+	/** online store widget */
+	TSharedPtr<class SShooterOnlineStore> OnlineStoreWidget;
+
 	/** custom menu */
 	TSharedPtr<class FShooterMenuItem> JoinServerItem;
 
 	/** yet another custom menu */
 	TSharedPtr<class FShooterMenuItem> LeaderboardItem;
+
+	/** yet another custom menu */
+	TSharedPtr<class FShooterMenuItem> OnlineStoreItem;
 
 	/** Custom demo browser menu */
 	TSharedPtr<class FShooterMenuItem> DemoBrowserItem;
@@ -98,6 +109,9 @@ protected:
 	/** LAN Options */
 	TSharedPtr<class FShooterMenuItem> HostLANItem;
 	TSharedPtr<class FShooterMenuItem> JoinLANItem;	
+
+	/** Dedicated Server Option */
+	TSharedPtr<class FShooterMenuItem> DedicatedItem;
 
 	/** Record demo option */
 	TSharedPtr<class FShooterMenuItem> RecordDemoItem;
@@ -109,6 +123,9 @@ protected:
 	TSharedPtr<FShooterMenuItem> HostOfflineMapOption;
 	TSharedPtr<FShooterMenuItem> HostOnlineMapOption;
 	TSharedPtr<FShooterMenuItem> JoinMapOption;
+
+	/** Host an onine session menu */
+	TSharedPtr<FShooterMenuItem> HostOnlineMenuItem;
 
 	/** Track if we are showing a map download pct or not. */
 	bool bShowingDownloadPct;
@@ -129,6 +146,15 @@ protected:
 
 	/** called when user chooses to start matchmaking. */
 	void OnQuickMatchSelected();
+
+	/** called when user chooses to start matchmaking, but a login is required first. */
+	void OnQuickMatchSelectedLoginRequired();
+
+	/** Called when user chooses split screen for the "host online" mode. Does some validation before moving on the split screen menu widget. */
+	void OnSplitScreenSelectedHostOnlineLoginRequired();
+
+	/** Called when user chooses split screen for the "host online" mode.*/
+	void OnSplitScreenSelectedHostOnline();
 
 	/** called when user chooses split screen.  Goes to the split screen setup screen.  Hides menu widget*/
 	void OnSplitScreenSelected();
@@ -154,6 +180,9 @@ protected:
 	/** lan match option changed callback */
 	void LanMatchChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex);
 
+	/** dedicated server option changed callback */
+	void DedicatedServerChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex);
+
 	/** record demo option changed callback */
 	void RecordDemoChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex);
 
@@ -178,11 +207,23 @@ protected:
 	/** Returns true if owning player is online. Displays proper messaging if the user can't play */
 	bool ValidatePlayerForOnlinePlay(ULocalPlayer* LocalPlayer);
 
+	/** Returns true if owning player is signed in to an account. Displays proper messaging if the user can't play */
+	bool ValidatePlayerIsSignedIn(ULocalPlayer* LocalPlayer);
+
+	/** Called when the join menu option is chosen */
+	void OnJoinSelected();
+
+	/** Join server, but login necessary first. */
+	void OnJoinServerLoginRequired();
+
 	/** Join server */
 	void OnJoinServer();
 
 	/** Show leaderboard */
 	void OnShowLeaderboard();
+
+	/** Show online store */
+	void OnShowOnlineStore();
 
 	/** Show demo browser */
 	void OnShowDemoBrowser();
@@ -224,7 +265,7 @@ protected:
 	void CleanupOnlinePrivilegeTask();
 
 	/** Delegate function executed after checking privileges for hosting an online game */
-	void OnUserCanPlayOnlineHost(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults);
+	void OnUserCanPlayHostOnline(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults);
 
 	/** Delegate function executed after checking privileges for joining an online game */
 	void OnUserCanPlayOnlineJoin(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults);
@@ -237,6 +278,15 @@ protected:
 
 	/** Delegate function executed when the quick match async cancel operation is complete */
 	void OnCancelMatchmakingComplete(FName SessionName, bool bWasSuccessful);
+
+	/** Delegate function executed when login completes before an online match is created */
+	void OnLoginCompleteHostOnline(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
+
+	/** Delegate function executed when login completes before an online match is joined */
+	void OnLoginCompleteJoin(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
+
+	/** Delegate function executed when login completes before quickmatch is started */
+	void OnLoginCompleteQuickmatch(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
 
 	/** Delegate for canceling matchmaking */
 	FOnCancelMatchmakingCompleteDelegate OnCancelMatchmakingCompleteDelegate;
@@ -273,6 +323,9 @@ protected:
 	/** Was input used to cancel the search request for quickmatch? */
 	bool bUsedInputToCancelQuickmatchSearch;
 
+	/** Dedicated server? */
+	bool bIsDedicatedServer;
+
 	/** used for displaying the quickmatch confirmation dialog when a quickmatch to join is not found */
 	TSharedPtr<class SShooterConfirmationDialog> QuickMatchFailureWidget;
 
@@ -298,4 +351,5 @@ protected:
 
 	FDelegateHandle OnMatchmakingCompleteDelegateHandle;
 	FDelegateHandle OnCancelMatchmakingCompleteDelegateHandle;
+	FDelegateHandle OnLoginCompleteDelegateHandle;
 };

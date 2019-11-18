@@ -1,8 +1,9 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "Online.h"
+#include "ShooterLeaderboards.h"
 #include "ShooterPlayerController.generated.h"
 
 class AShooterHUD;
@@ -96,6 +97,9 @@ public:
 	UFUNCTION(exec)
 	void SetGodMode(bool bEnable);
 
+	/** sets the produce force feedback flag. */
+	void SetIsVibrationEnabled(bool bEnable);
+
 	/** get infinite ammo cheat */
 	bool HasInfiniteAmmo() const;
 
@@ -107,6 +111,9 @@ public:
 
 	/** get gode mode cheat */
 	bool HasGodMode() const;
+
+	/** should produce force feedback? */
+	bool IsVibrationEnabled() const;
 
 	/** check if gameplay related actions (movement, weapon usage, etc) are allowed right now */
 	bool IsGameInputAllowed() const;
@@ -124,6 +131,9 @@ public:
 	 * @param bWasSuccessful true if the server responded successfully to the request
 	 */
 	void OnQueryAchievementsComplete(const FUniqueNetId& PlayerId, const bool bWasSuccessful );
+
+	UFUNCTION()
+	void OnLeaderboardReadComplete(bool bWasSuccessful);
 	
 	// Begin APlayerController interface
 
@@ -141,6 +151,8 @@ public:
 
 	virtual bool SetPause(bool bPause, FCanUnpause CanUnpauseDelegate = FCanUnpause()) override;
 
+	virtual FVector GetFocalLocation() const override;
+
 	// End APlayerController interface
 
 	// begin AShooterPlayerController-specific
@@ -149,6 +161,11 @@ public:
 	 * Reads achievements to precache them before first use
 	 */
 	void QueryAchievements();
+
+	/**
+	 * Reads backend stats to precache them before first use
+	 */
+	void QueryStats();
 
 	/** 
 	 * Writes a single achievement (unless another write is in progress).
@@ -195,6 +212,9 @@ protected:
 	UPROPERTY(Transient, Replicated)
 	uint8 bGodMode : 1;
 
+	/** should produce force feedback? */
+	uint8 bIsVibrationEnabled : 1;
+
 	/** if set, gameplay related actions (movement, weapn usage, etc) are allowed */
 	uint8 bAllowGameActions : 1;
 
@@ -213,13 +233,25 @@ protected:
 	/** try to find spot for death cam */
 	bool FindDeathCameraSpot(FVector& CameraLocation, FRotator& CameraRotation);
 
+	virtual void BeginDestroy() override;
+
 	//Begin AActor interface
 
 	/** after all game elements are created */
 	virtual void PostInitializeComponents() override;
 
-	virtual void BeginPlay() override;
+	/** Internal. Used to store stats from the online interface. These increment as matches are written */
+	int32 StatMatchesPlayed;
+	int32 StatKills;
+	int32 StatDeaths;
+	bool bHasFetchedPlatformData;
 
+	/** Internal. Reads the stats from the platform backend to sync online status with local */
+	FOnlineLeaderboardReadPtr ReadObject;
+	FDelegateHandle LeaderboardReadCompleteDelegateHandle;
+	void ClearLeaderboardDelegate();
+
+public:
 	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	//End AActor interface
 
@@ -265,6 +297,9 @@ protected:
 
 	/** Updates leaderboard stats at the end of a round */
 	void UpdateLeaderboardsOnGameEnd();
+
+	/** Updates stats at the end of a round */
+	void UpdateStatsOnGameEnd(bool bIsWinner);
 
 	/** Updates the save file at the end of a round */
 	void UpdateSaveFileOnGameEnd(bool bIsWinner);

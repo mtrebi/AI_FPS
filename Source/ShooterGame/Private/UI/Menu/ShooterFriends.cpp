@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterFriends.h"
@@ -28,10 +28,8 @@ void FShooterFriends::Construct(ULocalPlayer* _PlayerOwner, int32 LocalUserNum_)
 	FriendsItem = MenuHelper::AddMenuItem(FriendsRoot, LOCTEXT("Friends", "FRIENDS"));
 	OnlineSub = IOnlineSubsystem::Get();
 	OnlineFriendsPtr = OnlineSub->GetFriendsInterface();
-	if ( OnlineFriendsPtr.IsValid() )
-	{
-		OnlineFriendsPtr->ReadFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers)); //init read of the friends list with the current user
-	}
+
+	UpdateFriends(LocalUserNum);
 
 	UserSettings = CastChecked<UShooterGameUserSettings>(GEngine->GetGameUserSettings());
 }
@@ -94,22 +92,33 @@ void FShooterFriends::UpdateFriends(int32 NewOwnerIndex)
 	}
 
 	LocalUserNum = NewOwnerIndex;
-	OnlineFriendsPtr->ReadFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers));
+	OnlineFriendsPtr->ReadFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers), FOnReadFriendsListComplete::CreateSP(this, &FShooterFriends::OnFriendsUpdated));
+}
+
+void FShooterFriends::OnFriendsUpdated(int32 /*unused*/, bool bWasSuccessful, const FString& FriendListName, const FString& ErrorString)
+{
+	if (!bWasSuccessful)
+	{
+		UE_LOG(LogOnline, Warning, TEXT("Unable to update friendslist %s due to error=[%s]"), *FriendListName, *ErrorString);
+		return;
+	}
+
 	MenuHelper::ClearSubMenu(FriendsItem);
 
+	Friends.Reset();
 	if (OnlineFriendsPtr->GetFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers), Friends))
 	{
-		for (int32 Idx = 0; Idx < Friends.Num(); ++Idx)
+		for (const TSharedRef<FOnlineFriend> Friend : Friends)
 		{
-			const FString FriendUsername = Friends[Idx]->GetDisplayName();
-			TSharedPtr<FShooterMenuItem> FriendItem = MenuHelper::AddMenuItem(FriendsItem, FText::FromString(FriendUsername));
-			//FriendItem->OnControllerFacebuttonLeftPressed.BindRaw(this, &FShooterFriends::InviteSelectedFriendToGame);
-			FriendItem->OnControllerDownInputPressed.BindRaw(this, &FShooterFriends::IncrementFriendsCounter);
-			FriendItem->OnControllerUpInputPressed.BindRaw(this, &FShooterFriends::DecrementFriendsCounter);
-			FriendItem->OnControllerFacebuttonDownPressed.BindRaw(this, &FShooterFriends::ViewSelectedFriendProfile);
+			TSharedRef<FShooterMenuItem> FriendItem = MenuHelper::AddMenuItem(FriendsItem, FText::FromString(Friend->GetDisplayName()));
+			FriendItem->OnControllerFacebuttonDownPressed.BindSP(this, &FShooterFriends::ViewSelectedFriendProfile);
+			FriendItem->OnControllerDownInputPressed.BindSP(this, &FShooterFriends::IncrementFriendsCounter);
+			FriendItem->OnControllerUpInputPressed.BindSP(this, &FShooterFriends::DecrementFriendsCounter);
 		}
+
 		MaxFriendIndex = Friends.Num() - 1;
 	}
+
 	MenuHelper::AddMenuItemSP(FriendsItem, LOCTEXT("Close", "CLOSE"), this, &FShooterFriends::OnApplySettings);
 }
 
@@ -137,17 +146,21 @@ void FShooterFriends::ViewSelectedFriendProfile()
 		auto ExternalUI = Online::GetExternalUIInterface();
 		if (ExternalUI.IsValid() && Requestor.IsValid() && Requestee.IsValid())
 		{
-			ExternalUI->ShowProfileUI(*Requestor, *Requestee, IOnlineExternalUI::FOnProfileUIClosedDelegate());
+			ExternalUI->ShowProfileUI(*Requestor, *Requestee, FOnProfileUIClosedDelegate());
 		}
 	}
 }
 void FShooterFriends::InviteSelectedFriendToGame()
 {
-	if (OnlineFriendsPtr.IsValid() && Friends.IsValidIndex(CurrFriendIndex))
+	// invite the user to the current gamesession
+
+	IOnlineSessionPtr OnlineSessionInterface = OnlineSub->GetSessionInterface();
+	if (OnlineSessionInterface.IsValid())
 	{
-		OnlineFriendsPtr->SendInvite(LocalUserNum, *Friends[CurrFriendIndex]->GetUserId(), EFriendsLists::ToString(EFriendsLists::Default));
+		OnlineSessionInterface->SendSessionInviteToFriend(LocalUserNum, NAME_GameSession, *Friends[CurrFriendIndex]->GetUserId());
 	}
 }
 
 
 #undef LOCTEXT_NAMESPACE
+

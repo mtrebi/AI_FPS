@@ -2,10 +2,10 @@
 #include "ShooterGame.h"
 
 // recast includes
-#include "AI/Navigation/NavFilters/NavigationQueryFilter.h"
-#include "Runtime/Navmesh/Public/Detour/DetourNavMeshQuery.h"
-#include "Runtime/Navmesh/Public/Detour/DetourNavMesh.h"
-#include "Runtime/Navmesh/Public/Detour/DetourCommon.h"
+#include "NavFilters/NavigationQueryFilter.h"
+#include "Public/Detour/DetourNavMeshQuery.h"
+#include "Public/Detour/DetourNavMesh.h"
+#include "Public/Detour/DetourCommon.h"
 #include "Public/Navigation/MyRecastNavMesh.h"
 #include "Public/Navigation/CubeComponent.h"
 
@@ -271,8 +271,7 @@ void AMyRecastNavMesh::SetupCustomNavFilter() {
 	}
 }
 
-FRecastQueryFilter_Example* AMyRecastNavMesh::GetCustomFilter() const  {
-	FRecastQueryFilter_Example* MyFRecastQueryFilter = reinterpret_cast<FRecastQueryFilter_Example*>(DefaultQueryFilter.Get()->GetImplementation());
+FRecastQueryFilter_Example* AMyRecastNavMesh::GetCustomFilter() const {
+	FRecastQueryFilter_Example* MyFRecastQueryFilter = static_cast<FRecastQueryFilter_Example*>(DefaultQueryFilter.Get()->GetImplementation());
 	return MyFRecastQueryFilter;
 }
-

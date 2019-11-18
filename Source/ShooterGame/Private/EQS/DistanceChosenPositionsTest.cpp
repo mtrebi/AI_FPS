@@ -31,7 +31,7 @@ void UDistanceChosenPositionsTest::RunTest(FEnvQueryInstance& QueryInstance) con
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 
 	APawn * Pawn = Cast<APawn>(QueryOwner);
 
@@ -48,7 +48,7 @@ void UDistanceChosenPositionsTest::RunTest(FEnvQueryInstance& QueryInstance) con
 	const TMap<FString, FVector> * AlreadyChosenAttackPositions = AIController->GetAI_fAttackLocations();
 
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It) {
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 	
 		float MinDistance = 10000;
 		for (auto& Elem : *AlreadyChosenAttackPositions) {

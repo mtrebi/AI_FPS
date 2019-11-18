@@ -9,7 +9,7 @@ UMyNavigationQueryFilter::UMyNavigationQueryFilter(const FObjectInitializer& Obj
 
 }
 
-void UMyNavigationQueryFilter::InitializeFilter(const ANavigationData& NavData, FNavigationQueryFilter& Filter) const
+void UMyNavigationQueryFilter::InitializeFilter(const ANavigationData& NavData, const UObject* Querier, FNavigationQueryFilter& Filter) const
 {
 #if WITH_RECAST
 
@@ -43,6 +43,6 @@ void UMyNavigationQueryFilter::InitializeFilter(const ANavigationData& NavData, 
 	}
 
 #endif // WITH_RECAST
-
-	Super::InitializeFilter(NavData, Filter);
+	Super::InitializeFilter(NavData, Querier, Filter);
+	//Super::InitializeFilter(const NavData, const UObject* Querier, FNavigationQueryFilter& Filter);
 }

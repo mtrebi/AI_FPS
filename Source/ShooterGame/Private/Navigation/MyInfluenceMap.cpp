@@ -153,10 +153,10 @@ void AMyInfluenceMap::PropagateInfluence() {
 				const FVector2D CurrentTileWorld = UpdatedTexture->TextureToWorldSpace(CurrentTile->X, CurrentTile->Y);
 				const FVector2D NeighborTileWorld = UpdatedTexture->TextureToWorldSpace(NeighborTile->X, NeighborTile->Y);
 				const float Distance = FVector2D::Distance(CurrentTileWorld, NeighborTileWorld);
-				const float Influence = NeighborTile->Influence * expf(-Distance * Decay);
+				const float Influence = NeighborTile->Influence * expf(-Distance * Decayy);
 				MaxInfluence = FMath::Max(Influence, MaxInfluence);
 			}
-			const float NewInfluence = FMath::Lerp(CurrentTile->Influence, MaxInfluence, Momentum);
+			const float NewInfluence = FMath::Lerp(CurrentTile->Influence, MaxInfluence, Momentumm);
 			SetLocalInfluence(Index, NewInfluence);
 		}
 	}
@@ -181,8 +181,8 @@ AMyInfluenceMap::AMyInfluenceMap()
 }
 
 void AMyInfluenceMap::CreateInfluenceMap(const float Momentum, const float Decay, const float UpdateFreq, const FString BaseImagePath, const FString ImagePath) {
-	this->Momentum = Momentum;
-	this->Decay = Decay;
+	this->Momentumm = Momentum;
+	this->Decayy = Decay;
 	this->UpdateFrequency = UpdateFreq;
 
 	this->BaseTexture = new MyTexture2D(BaseImagePath);

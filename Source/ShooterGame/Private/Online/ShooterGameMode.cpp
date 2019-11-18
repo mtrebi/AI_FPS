@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterGameInstance.h"
@@ -46,7 +46,7 @@ void AShooterGameMode::InitGame(const FString& MapName, const FString& Options, 
 	Super::InitGame(MapName, Options, ErrorMessage);
 
 	const UGameInstance* GameInstance = GetGameInstance();
-	if (GameInstance && Cast<UShooterGameInstance>(GameInstance)->GetIsOnline())
+	if (GameInstance && Cast<UShooterGameInstance>(GameInstance)->GetOnlineMode() != EOnlineMode::Offline)
 	{
 		bPauseable = false;
 	}
@@ -123,6 +123,8 @@ void AShooterGameMode::DefaultTimer()
 
 void AShooterGameMode::HandleMatchIsWaitingToStart()
 {
+	Super::HandleMatchIsWaitingToStart();
+
 	if (bNeedsBotCreation)
 	{
 		CreateBotControllers();
@@ -220,8 +222,8 @@ void AShooterGameMode::RequestFinishAndExitToMainMenu()
 
 		if (!Controller->IsLocalController())
 		{
-			const FString RemoteReturnReason = NSLOCTEXT("NetworkErrors", "HostHasLeft", "Host has left the game.").ToString();
-			Controller->ClientReturnToMainMenu(RemoteReturnReason);
+			const FText RemoteReturnReason = NSLOCTEXT("NetworkErrors", "HostHasLeft", "Host has left the game.");
+			Controller->ClientReturnToMainMenuWithTextReason(RemoteReturnReason);
 		}
 		else
 		{
@@ -246,7 +248,7 @@ bool AShooterGameMode::IsWinner(class AShooterPlayerState* PlayerState) const
 	return false;
 }
 
-void AShooterGameMode::PreLogin(const FString& Options, const FString& Address, const TSharedPtr<const FUniqueNetId>& UniqueId, FString& ErrorMessage)
+void AShooterGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
 	AShooterGameState* const MyGameState = Cast<AShooterGameState>(GameState);
 	const bool bMatchIsOver = MyGameState && MyGameState->HasMatchEnded();
@@ -306,7 +308,7 @@ float AShooterGameMode::ModifyDamage(float Damage, AActor* DamagedActor, struct 
 	AShooterCharacter* DamagedPawn = Cast<AShooterCharacter>(DamagedActor);
 	if (DamagedPawn && EventInstigator)
 	{
-		AShooterPlayerState* DamagedPlayerState = Cast<AShooterPlayerState>(DamagedPawn->PlayerState);
+		AShooterPlayerState* DamagedPlayerState = Cast<AShooterPlayerState>(DamagedPawn->GetPlayerState());
 		AShooterPlayerState* InstigatorPlayerState = Cast<AShooterPlayerState>(EventInstigator->PlayerState);
 
 		// disable friendly fire
@@ -493,8 +495,6 @@ AShooterAIController* AShooterGameMode::CreateBot(int32 BotNum)
 void AShooterGameMode::StartBots()
 {
 	// checking number of existing human player.
-	int32 NumPlayers = 0;
-	int32 NumBots = 0;
 	UWorld* World = GetWorld();
 	for (FConstControllerIterator It = World->GetControllerIterator(); It; ++It)
 	{		
@@ -513,7 +513,7 @@ void AShooterGameMode::InitBot(AShooterAIController* AIController, int32 BotNum)
 		if (AIController->PlayerState)
 		{
 			FString BotName = FString::Printf(TEXT("Bot %d"), BotNum);
-			AIController->PlayerState->PlayerName = BotName;
+			AIController->PlayerState->SetPlayerName(BotName);
 		}		
 	}
 }

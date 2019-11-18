@@ -30,6 +30,7 @@ AShooterAIController::AShooterAIController(const FObjectInitializer& ObjectIniti
 	// Setup AIPerception component
 	AIPerceptionComp = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception Component"));
 	
+	
 	AIPerceptionSightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Sight Config"));
 	// Configure Sight perception component
 	AIPerceptionSightConfig->SightRadius = 4500;
@@ -48,16 +49,16 @@ AShooterAIController::AShooterAIController(const FObjectInitializer& ObjectIniti
 	AIPerceptionHearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	AIPerceptionHearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	AIPerceptionComp->ConfigureSense(*AIPerceptionHearingConfig);
-	
+
 	AIPerceptionComp->OnPerceptionUpdated.AddDynamic(this, &AShooterAIController::OnPerceptionUpdated);
 
 	bWantsPlayerState = true;	
 }
 
 
-void AShooterAIController::Possess(APawn* InPawn)
+void AShooterAIController::OnPossess(APawn* InPawn)
 {
-	Super::Possess(InPawn);
+	Super::OnPossess(InPawn);
 	AShooterBot* Bot = Cast<AShooterBot>(InPawn);
 
 	UAIPerceptionSystem::RegisterPerceptionStimuliSource(this, UAISense_Sight::StaticClass(), InPawn);
@@ -89,16 +90,36 @@ void AShooterAIController::BeginInactiveState()
 {
 	Super::BeginInactiveState();
 
-	AGameState* GameState = GetWorld()->GameState;
+	AGameStateBase const* const GameState = GetWorld()->GetGameState();
 
-	const float MinRespawnDelay = (GameState && GameState->GameModeClass) ? GetDefault<AGameMode>(GameState->GameModeClass)->MinRespawnDelay : 1.0f;
+	const float MinRespawnDelay = GameState ? GameState->GetPlayerRespawnDelay(this) : 1.0f;
 
 	GetWorldTimerManager().SetTimer(TimerHandle_Respawn, this, &AShooterAIController::Respawn, MinRespawnDelay);
+
 }
 
 void AShooterAIController::Respawn()
 {
 	GetWorld()->GetAuthGameMode()->RestartPlayer(this);
+}
+
+void AShooterAIController::SetEnemy(class APawn* InPawn)
+{
+	if (BlackboardComp)
+	{
+		BlackboardComp->SetValue<UBlackboardKeyType_Object>(EnemyKeyID, InPawn);
+		SetFocus(InPawn);
+	}
+}
+
+class AShooterCharacter* AShooterAIController::GetEnemy() const
+{
+	if (BlackboardComp)
+	{
+		return Cast<AShooterCharacter>(BlackboardComp->GetValue<UBlackboardKeyType_Object>(EnemyKeyID));
+	}
+
+	return NULL;
 }
 
 bool AShooterAIController::HasWeaponLOSToEnemy(AActor* InEnemyActor, const bool bAnyEnemy) const
@@ -110,7 +131,7 @@ bool AShooterAIController::HasWeaponLOSToEnemy(AActor* InEnemyActor, const bool 
 	bool bHasLOS = false;
 	// Perform trace to retrieve hit info
 	FCollisionQueryParams TraceParams(LosTag, true, GetPawn());
-	TraceParams.bTraceAsyncScene = true;
+	TraceParams.bTraceComplex = true;
 
 	TraceParams.bReturnPhysicalMaterial = true;	
 	FVector StartLocation = MyBot->GetActorLocation();	
@@ -135,7 +156,7 @@ bool AShooterAIController::HasWeaponLOSToEnemy(AActor* InEnemyActor, const bool 
 				ACharacter* HitChar = Cast<ACharacter>(HitActor);
 				if (HitChar != NULL)
 				{
-					AShooterPlayerState* HitPlayerState = Cast<AShooterPlayerState>(HitChar->PlayerState);
+					AShooterPlayerState* HitPlayerState = Cast<AShooterPlayerState>(HitChar->GetPlayerState());
 					AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(PlayerState);
 					if ((HitPlayerState != NULL) && (MyPlayerState != NULL))
 					{
@@ -287,13 +308,13 @@ void AShooterAIController::SetAI_SearchLocations(ASearchLocations * SearchLocati
 
 void AShooterAIController::SetAI_NextSearchLocation(const FVector SearchLocation) {
 	TMap<FString, FVector> * NewSearchPositions = GetAI_SearchLocations();
-	APawn * Pawn = this->GetPawn();
+	APawn* pawn = this->GetPawn();
 
-	if (!Pawn) {
+	if (!pawn) {
 		return;
 	}
 
-	NewSearchPositions->Add(Pawn->GetName(), SearchLocation);
+	NewSearchPositions->Add(pawn->GetName(), SearchLocation);
 	BlackboardComp->SetValueAsVector("AI_sNextLocation", SearchLocation);
 	//SetFocalPoint(SearchLocation, EAIFocusPriority::Default);
 
@@ -317,16 +338,16 @@ void AShooterAIController::LookAround(const float RotationAngle, const float Rot
 
 	AActor * actor = GetFocusActor();
 	FVector Point = GetFocalPoint();
-	APawn * Pawn = this->GetPawn();
+	APawn * pawn = GetPawn();
 
-	if (!Pawn) {
+	if (!pawn) {
 		return;
 	}
 
 	//const FRotator Rotation = Pawn->GetActorRotation() + FRotator(0, RotationAngle, 0);
 	//Pawn->FaceRotation(Rotation, RotationTime);
 	//Pawn->AddActorLocalRotation(FRotator(0, RotationAngle, 0));
-	Pawn->SetActorRelativeRotation(FRotator(0, RotationAngle, 0));
+	pawn->SetActorRelativeRotation(FRotator(0, RotationAngle, 0));
 	//this->SetControlRotation(FRotator(0, RotationAngle, 0));
 	//this->ClientSetRotation(FRotator(0, RotationAngle, 0));
 
@@ -444,8 +465,8 @@ FVector AShooterAIController::GetAI_fNextAttackLocation() const {
 }
 
 void AShooterAIController::SetAI_fNextAttackLocation(const FVector AttackLocation) {
-	APawn * Pawn = this->GetPawn();
-	if (!Pawn) {
+	APawn * pawn = this->GetPawn();
+	if (!pawn) {
 		return ;
 	}
 
@@ -453,7 +474,7 @@ void AShooterAIController::SetAI_fNextAttackLocation(const FVector AttackLocatio
 	BlackboardComp->SetValueAsVector("AI_fNextAttackLocation", AttackLocation);
 
 	TMap<FString, FVector> * AttackPositions = GetAI_fAttackLocations();
-	AttackPositions->Add(Pawn->GetName(), AttackLocation);
+	AttackPositions->Add(pawn->GetName(), AttackLocation);
 
 }
 
@@ -485,9 +506,9 @@ bool AShooterAIController::IsLineOfSightClearOfBots() const {
 	FHitResult OutHit;
 	FCollisionQueryParams CollisionParams;
 
-	APawn* Pawn = GetPawn();
+	APawn* pawn = GetPawn();
 
-	if (!Pawn) {
+	if (!pawn) {
 		return true;
 	}
 
@@ -497,7 +518,7 @@ bool AShooterAIController::IsLineOfSightClearOfBots() const {
 		return true;
 	}
 
-	FVector ViewPoint = Pawn->GetActorLocation();
+	FVector ViewPoint = pawn->GetActorLocation();
 
 	if (ViewPoint.IsZero())
 	{
@@ -514,7 +535,7 @@ bool AShooterAIController::IsLineOfSightClearOfBots() const {
 	static FName NAME_LineOfSight = FName(TEXT("LineOfSight"));
 	FVector TargetLocation = GetFocalPoint();
 
-	CollisionParams.AddIgnoredActor(Pawn);
+	CollisionParams.AddIgnoredActor(pawn);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(OutHit, ViewPoint, TargetLocation, COLLISION_WEAPON, CollisionParams);
 	if (bHit && OutHit.Actor->GetName().Contains("Bot"))
@@ -594,7 +615,7 @@ void AShooterAIController::ReloadWeapon()
 
 /************************* RUNTIME UPDATES **************************/
 
-void AShooterAIController::OnPerceptionUpdated(TArray<AActor*> updatedActors){
+void AShooterAIController::OnPerceptionUpdated(const TArray<AActor*>& updatedActors){
 	APawn* Player = NULL;
 
 	UWorld * World = GetWorld();
@@ -787,7 +808,7 @@ void AShooterAIController::UpdateMyVisibility() {
 			const FVector UpMyLocation = FVector(MyLocation.X, MyLocation.Y, HelperMethods::EYES_POS_Z);
 
 
-			FCollisionQueryParams CollisionParams;
+			//FCollisionQueryParams CollisionParams;
 			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AShooterCharacter::StaticClass(), ActorsToIgnore);
 			CollisionParams.AddIgnoredActors(ActorsToIgnore);
 			const bool BlockingHitFound = World->LineTraceSingleByChannel(OutHit, UpMyLocation, PlayerLastLocUp, ECollisionChannel::ECC_Visibility, CollisionParams);
@@ -1004,7 +1025,7 @@ bool AShooterAIController::PositionIsGoodAttack(const FVector AttackPosition, co
 	for (float X = AttackPosition.X - 250; X < AttackPosition.X + 250; X += 10) {
 		for (float Y = AttackPosition.Y - 250; Y < AttackPosition.Y + 250; Y += 10) {
 			const FVector CoverPosition = FVector(X, Y, HelperMethods::EYES_POS_Z);
-			//UNavigationSystem::ProjectPointToNavigation()
+			//UNavigationSystemV1::ProjectPointToNavigation()
 			
 			if (PositionIsSafeCover(CoverPosition, PlayerPosition)) {
 				PositionIsGoodAttack = true;

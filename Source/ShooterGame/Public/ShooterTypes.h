@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterTypes.generated.h"
 #pragma once
@@ -98,7 +98,8 @@ struct FDecalData
 
 	/** defaults */
 	FDecalData()
-		: DecalSize(256.f)
+		: DecalMaterial(nullptr)
+		, DecalSize(256.f)
 		, LifeSpan(10.f)
 	{
 	}
@@ -153,63 +154,9 @@ private:
 	FRadialDamageEvent RadialDamageEvent;
 
 public:
-	FTakeHitInfo()
-		: ActualDamage(0)
-		, DamageTypeClass(NULL)
-		, PawnInstigator(NULL)
-		, DamageCauser(NULL)
-		, DamageEventClassID(0)
-		, bKilled(false)
-		, EnsureReplicationByte(0)
-	{}
+	FTakeHitInfo();
 
-	FDamageEvent& GetDamageEvent()
-	{
-		switch (DamageEventClassID)
-		{
-		case FPointDamageEvent::ClassID:
-			if (PointDamageEvent.DamageTypeClass == NULL)
-			{
-				PointDamageEvent.DamageTypeClass = DamageTypeClass ? DamageTypeClass : UDamageType::StaticClass();
-			}
-			return PointDamageEvent;
-
-		case FRadialDamageEvent::ClassID:
-			if (RadialDamageEvent.DamageTypeClass == NULL)
-			{
-				RadialDamageEvent.DamageTypeClass = DamageTypeClass ? DamageTypeClass : UDamageType::StaticClass();
-			}
-			return RadialDamageEvent;
-
-		default:
-			if (GeneralDamageEvent.DamageTypeClass == NULL)
-			{
-				GeneralDamageEvent.DamageTypeClass = DamageTypeClass ? DamageTypeClass : UDamageType::StaticClass();
-			}
-			return GeneralDamageEvent;
-		}
-	}
-
-	void SetDamageEvent(const FDamageEvent& DamageEvent)
-	{
-		DamageEventClassID = DamageEvent.GetTypeID();
-		switch (DamageEventClassID)
-		{
-		case FPointDamageEvent::ClassID:
-			PointDamageEvent = *((FPointDamageEvent const*)(&DamageEvent));
-			break;
-		case FRadialDamageEvent::ClassID:
-			RadialDamageEvent = *((FRadialDamageEvent const*)(&DamageEvent));
-			break;
-		default:
-			GeneralDamageEvent = DamageEvent;
-		}
-
-		DamageTypeClass = DamageEvent.DamageTypeClass;
-	}
-
-	void EnsureReplication()
-	{
-		EnsureReplicationByte++;
-	}
+	FDamageEvent& GetDamageEvent();
+	void SetDamageEvent(const FDamageEvent& DamageEvent);
+	void EnsureReplication();
 };

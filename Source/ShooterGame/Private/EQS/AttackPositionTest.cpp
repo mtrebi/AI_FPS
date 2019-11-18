@@ -41,7 +41,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	}
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	const TArray<FVector> LocationOfCoverAnnotations = GetLocationOfCoverAnnotationsWithinRadius(World, ContextLocations[0]);
 
 
@@ -51,7 +51,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	{
 		float CurrentDistance;
 		float MinDistance = 100000;
-		const FVector Location = GetItemLocation(QueryInstance, *It);
+		const FVector Location = GetItemLocation(QueryInstance, It);
 		for (auto It2 = LocationOfCoverAnnotations.CreateConstIterator(); It2; ++It2) {
 			const FVector CoverLocation = *It2;
 			CurrentDistance = FVector::Dist(Location, CoverLocation);
@@ -59,7 +59,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 		}
 		// Discard items that are far away of a cover annotation
 		if (MinDistance > DiscardDistanceMax) {
-			//It.DiscardItem();
+			It.ForceItemState(EEnvItemStatus::Failed);
 		}
 		else if (World) {
 			FHitResult OutHit;
@@ -77,7 +77,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 				//BehindCoverLocations.Add(Location);
 			}
 			else {
-				It.DiscardItem();
+				It.ForceItemState(EEnvItemStatus::Failed);
 			}
 		}
 	}
@@ -85,7 +85,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	// Check visibility of points to behind cover locations
 	for (FEnvQueryInstance::ItemIterator It3(this, QueryInstance); It3; ++It3)
 	{
-		const FVector Location = GetItemLocation(QueryInstance, *It3);
+		const FVector Location = GetItemLocation(QueryInstance, It3);
 
 		FHitResult OutHit;
 		FCollisionQueryParams CollisionParams;
@@ -112,12 +112,12 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 			}
 			else {
 				// Discard items that are far away of a cover annotation
-				It3.DiscardItem();
+				It3.ForceItemState(EEnvItemStatus::Failed);
 			}
 		}
 		else {
 			// No visibility
-			It3.DiscardItem();
+			It3.ForceItemState(EEnvItemStatus::Failed);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "Weapons/ShooterWeapon_Instant.h"
@@ -31,12 +31,12 @@ void AShooterWeapon_Instant::FireWeapon()
 	CurrentFiringSpread = FMath::Min(InstantConfig.FiringSpreadMax, CurrentFiringSpread + InstantConfig.FiringSpreadIncrement);
 }
 
-bool AShooterWeapon_Instant::ServerNotifyHit_Validate(const FHitResult Impact, FVector_NetQuantizeNormal ShootDir, int32 RandomSeed, float ReticleSpread)
+bool AShooterWeapon_Instant::ServerNotifyHit_Validate(const FHitResult& Impact, FVector_NetQuantizeNormal ShootDir, int32 RandomSeed, float ReticleSpread)
 {
 	return true;
 }
 
-void AShooterWeapon_Instant::ServerNotifyHit_Implementation(const FHitResult Impact, FVector_NetQuantizeNormal ShootDir, int32 RandomSeed, float ReticleSpread)
+void AShooterWeapon_Instant::ServerNotifyHit_Implementation(const FHitResult& Impact, FVector_NetQuantizeNormal ShootDir, int32 RandomSeed, float ReticleSpread)
 {
 	const float WeaponAngleDot = FMath::Abs(FMath::Sin(ReticleSpread * PI / 180.f));
 
@@ -192,7 +192,7 @@ bool AShooterWeapon_Instant::ShouldDealDamage(AActor* TestActor) const
 	{
 		if (GetNetMode() != NM_Client ||
 			TestActor->Role == ROLE_Authority ||
-			TestActor->bTearOff)
+			TestActor->GetTearOff())
 		{
 			return true;
 		}

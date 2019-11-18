@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -122,7 +122,7 @@ protected:
 
 	/** server notified of hit from client to verify */
 	UFUNCTION(reliable, server, WithValidation)
-	void ServerNotifyHit(const FHitResult Impact, FVector_NetQuantizeNormal ShootDir, int32 RandomSeed, float ReticleSpread);
+	void ServerNotifyHit(const FHitResult& Impact, FVector_NetQuantizeNormal ShootDir, int32 RandomSeed, float ReticleSpread);
 
 	/** server notified of miss to show trail FX */
 	UFUNCTION(unreliable, server, WithValidation)

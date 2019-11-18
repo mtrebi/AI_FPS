@@ -32,7 +32,7 @@ void UBehindObstacleTest::RunTest(FEnvQueryInstance& QueryInstance) const
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	const FVector PlayerPosition = HelperMethods::GetPlayerPositionFromAI(World);
 	const FVector EyesPosition = FVector(PlayerPosition.X, PlayerPosition.Y, HelperMethods::EYES_POS_Z);
 	
@@ -45,7 +45,7 @@ void UBehindObstacleTest::RunTest(FEnvQueryInstance& QueryInstance) const
 
 	// Get all behind cover points
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It){
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		const FVector UpItemLocation = FVector(ItemLocation.X, ItemLocation.Y, HelperMethods::EYES_POS_Z);
 		
 		if (World) {
@@ -53,7 +53,7 @@ void UBehindObstacleTest::RunTest(FEnvQueryInstance& QueryInstance) const
 			const bool BlockingHitFound = World->LineTraceSingleByChannel(OutHit, UpItemLocation, EyesPosition, ECollisionChannel::ECC_Visibility, CollisionParams);
 
 			if (BlockingHitFound) {
-				FHitResult  OutHit1, OutHit2, OutHit3, OutHit4;
+				//FHitResult  OutHit1, OutHit2, OutHit3, OutHit4;
 				const FVector UpItemLocation1 = FVector(UpItemLocation.X + 75, UpItemLocation.Y, UpItemLocation.Z);
 				const FVector UpItemLocation2 = FVector(UpItemLocation.X - 75, UpItemLocation.Y, UpItemLocation.Z);
 				const FVector UpItemLocation3 = FVector(UpItemLocation.X, UpItemLocation.Y + 75, UpItemLocation.Z);

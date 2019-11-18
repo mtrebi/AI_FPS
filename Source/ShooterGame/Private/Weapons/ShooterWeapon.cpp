@@ -1,17 +1,17 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "Weapons/ShooterWeapon.h"
+#include "Player/ShooterCharacter.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Bots/ShooterAIController.h"
 #include "Online/ShooterPlayerState.h"
-#include "Perception/AISense_Hearing.h"
 #include "UI/ShooterHUD.h"
 
 AShooterWeapon::AShooterWeapon(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	Mesh1P = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("WeaponMesh1P"));
-	Mesh1P->MeshComponentUpdateFlag = EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered;
+	Mesh1P->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 	Mesh1P->bReceivesDecals = false;
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetCollisionObjectType(ECC_WorldDynamic);
@@ -20,7 +20,7 @@ AShooterWeapon::AShooterWeapon(const FObjectInitializer& ObjectInitializer) : Su
 	RootComponent = Mesh1P;
 
 	Mesh3P = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("WeaponMesh3P"));
-	Mesh3P->MeshComponentUpdateFlag = EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered;
+	Mesh3P->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 	Mesh3P->bReceivesDecals = false;
 	Mesh3P->CastShadow = true;
 	Mesh3P->SetCollisionObjectType(ECC_WorldDynamic);
@@ -29,7 +29,7 @@ AShooterWeapon::AShooterWeapon(const FObjectInitializer& ObjectInitializer) : Su
 	Mesh3P->SetCollisionResponseToChannel(COLLISION_WEAPON, ECR_Block);
 	Mesh3P->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	Mesh3P->SetCollisionResponseToChannel(COLLISION_PROJECTILE, ECR_Block);
-	Mesh3P->AttachParent = Mesh1P;
+	Mesh3P->SetupAttachment(Mesh1P);
 
 	bLoopedMuzzleFX = false;
 	bLoopedFireAnim = false;
@@ -105,6 +105,8 @@ void AShooterWeapon::OnEquip(const AShooterWeapon* LastWeapon)
 	{
 		PlayWeaponSound(EquipSound);
 	}
+
+	AShooterCharacter::NotifyEquipWeapon.Broadcast(MyPawn, this);
 }
 
 void AShooterWeapon::OnEquipFinished()
@@ -154,6 +156,8 @@ void AShooterWeapon::OnUnEquip()
 		GetWorldTimerManager().ClearTimer(TimerHandle_OnEquipFinished);
 	}
 
+	AShooterCharacter::NotifyUnEquipWeapon.Broadcast(MyPawn, this);
+
 	DetermineWeaponState();
 }
 
@@ -164,14 +168,14 @@ void AShooterWeapon::OnEnterInventory(AShooterCharacter* NewOwner)
 
 void AShooterWeapon::OnLeaveInventory()
 {
-	if (Role == ROLE_Authority)
-	{
-		SetOwningPawn(NULL);
-	}
-
 	if (IsAttachedToPawn())
 	{
 		OnUnEquip();
+	}
+
+	if (Role == ROLE_Authority)
+	{
+		SetOwningPawn(NULL);
 	}
 }
 
@@ -190,14 +194,14 @@ void AShooterWeapon::AttachMeshToPawn()
 			USkeletalMeshComponent* PawnMesh3p = MyPawn->GetSpecifcPawnMesh(false);
 			Mesh1P->SetHiddenInGame( false );
 			Mesh3P->SetHiddenInGame( false );
-			Mesh1P->AttachTo(PawnMesh1p, AttachPoint);
-			Mesh3P->AttachTo(PawnMesh3p, AttachPoint);
+			Mesh1P->AttachToComponent(PawnMesh1p, FAttachmentTransformRules::KeepRelativeTransform, AttachPoint);
+			Mesh3P->AttachToComponent(PawnMesh3p, FAttachmentTransformRules::KeepRelativeTransform, AttachPoint);
 		}
 		else
 		{
 			USkeletalMeshComponent* UseWeaponMesh = GetWeaponMesh();
 			USkeletalMeshComponent* UsePawnMesh = MyPawn->GetPawnMesh();
-			UseWeaponMesh->AttachTo(UsePawnMesh, AttachPoint);	
+			UseWeaponMesh->AttachToComponent(UsePawnMesh, FAttachmentTransformRules::KeepRelativeTransform, AttachPoint);
 			UseWeaponMesh->SetHiddenInGame( false );
 		}
 	}
@@ -205,10 +209,10 @@ void AShooterWeapon::AttachMeshToPawn()
 
 void AShooterWeapon::DetachMeshFromPawn()
 {
-	Mesh1P->DetachFromParent();
+	Mesh1P->DetachFromComponent(FDetachmentTransformRules::KeepRelativeTransform);
 	Mesh1P->SetHiddenInGame(true);
 
-	Mesh3P->DetachFromParent();
+	Mesh3P->DetachFromComponent(FDetachmentTransformRules::KeepRelativeTransform);
 	Mesh3P->SetHiddenInGame(true);
 }
 
@@ -221,7 +225,7 @@ void AShooterWeapon::StartFire()
 	if (Role < ROLE_Authority)
 	{
 		ServerStartFire();
-	} 
+	}
 
 	if (!bWantsToFire)
 	{
@@ -232,7 +236,7 @@ void AShooterWeapon::StartFire()
 
 void AShooterWeapon::StopFire()
 {
-	if (Role < ROLE_Authority)
+	if ((Role < ROLE_Authority) && MyPawn && MyPawn->IsLocallyControlled())
 	{
 		ServerStopFire();
 	}
@@ -367,7 +371,7 @@ void AShooterWeapon::GiveAmmo(int AddAmount)
 	// start reload if clip was empty
 	if (GetCurrentAmmoInClip() <= 0 &&
 		CanReload() &&
-		MyPawn->GetWeapon() == this)
+		MyPawn && (MyPawn->GetWeapon() == this))
 	{
 		ClientStartReload();
 	}
@@ -405,6 +409,21 @@ void AShooterWeapon::UseAmmo()
 				break;			
 		}
 	}
+}
+
+void AShooterWeapon::HandleReFiring()
+{
+	// Update TimerIntervalAdjustment
+	UWorld* MyWorld = GetWorld();
+
+	float SlackTimeThisFrame = FMath::Max(0.0f, (MyWorld->TimeSeconds - LastFireTime) - WeaponConfig.TimeBetweenShots);
+
+	if (bAllowAutomaticWeaponCatchup)
+	{
+		TimerIntervalAdjustment -= SlackTimeThisFrame;
+	}
+
+	HandleFiring();
 }
 
 void AShooterWeapon::HandleFiring()
@@ -468,7 +487,8 @@ void AShooterWeapon::HandleFiring()
 		bRefiring = (CurrentState == EWeaponState::Firing && WeaponConfig.TimeBetweenShots > 0.0f);
 		if (bRefiring)
 		{
-			GetWorldTimerManager().SetTimer(TimerHandle_HandleFiring, this, &AShooterWeapon::HandleFiring, WeaponConfig.TimeBetweenShots, false);
+			GetWorldTimerManager().SetTimer(TimerHandle_HandleFiring, this, &AShooterWeapon::HandleReFiring, FMath::Max<float>(WeaponConfig.TimeBetweenShots + TimerIntervalAdjustment, SMALL_NUMBER), false);
+			TimerIntervalAdjustment = 0.f;
 		}
 	}
 
@@ -576,7 +596,6 @@ void AShooterWeapon::OnBurstStarted()
 	{
 		HandleFiring();
 	}
-	UAISense_Hearing::ReportNoiseEvent(this, GetActorLocation(), 50000.0, this);
 }
 
 void AShooterWeapon::OnBurstFinished()
@@ -589,10 +608,12 @@ void AShooterWeapon::OnBurstFinished()
 	{
 		StopSimulatingWeaponFire();
 	}
-	UAISense_Hearing::ReportNoiseEvent(this, GetActorLocation(), 50000.0, this);
-
+	
 	GetWorldTimerManager().ClearTimer(TimerHandle_HandleFiring);
 	bRefiring = false;
+
+	// reset firing interval adjustment
+	TimerIntervalAdjustment = 0.0f;
 }
 
 
@@ -723,11 +744,9 @@ FVector AShooterWeapon::GetMuzzleDirection() const
 
 FHitResult AShooterWeapon::WeaponTrace(const FVector& StartTrace, const FVector& EndTrace) const
 {
-	static FName WeaponFireTag = FName(TEXT("WeaponTrace"));
 
 	// Perform trace to retrieve hit info
-	FCollisionQueryParams TraceParams(WeaponFireTag, true, Instigator);
-	TraceParams.bTraceAsyncScene = true;
+	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(WeaponTrace), true, Instigator);
 	TraceParams.bReturnPhysicalMaterial = true;
 
 	FHitResult Hit(ForceInit);
@@ -847,9 +866,11 @@ void AShooterWeapon::SimulateWeaponFire()
 		{
 			PC->ClientPlayCameraShake(FireCameraShake, 1);
 		}
-		if (FireForceFeedback != NULL)
+		if (FireForceFeedback != NULL && PC->IsVibrationEnabled())
 		{
-			PC->ClientPlayForceFeedback(FireForceFeedback, false, "Weapon");
+			FForceFeedbackParameters FFParams;
+			FFParams.Tag = "Weapon";
+			PC->ClientPlayForceFeedback(FireForceFeedback, FFParams);
 		}
 	}
 }

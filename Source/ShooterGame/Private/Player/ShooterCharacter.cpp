@@ -1,24 +1,45 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "Weapons/ShooterWeapon.h"
 #include "Weapons/ShooterDamageType.h"
 #include "UI/ShooterHUD.h"
-#include "Perception/AISense_Hearing.h"
 #include "Online/ShooterPlayerState.h"
-#include "Bots/ShooterBot.h"
-#include "Public/EQS/CoverBaseClass.h"
+#include "Animation/AnimMontage.h"
+#include "Animation/AnimInstance.h"
+#include "Sound/SoundNodeLocalPlayer.h"
+#include "AudioThread.h"
 
-AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer) 
+static int32 NetVisualizeRelevancyTestPoints = 0;
+FAutoConsoleVariableRef CVarNetVisualizeRelevancyTestPoints(
+	TEXT("p.NetVisualizeRelevancyTestPoints"),
+	NetVisualizeRelevancyTestPoints,
+	TEXT("")
+	TEXT("0: Disable, 1: Enable"),
+	ECVF_Cheat);
+
+
+static int32 NetEnablePauseRelevancy = 1;
+FAutoConsoleVariableRef CVarNetEnablePauseRelevancy(
+	TEXT("p.NetEnablePauseRelevancy"),
+	NetEnablePauseRelevancy,
+	TEXT("")
+	TEXT("0: Disable, 1: Enable"),
+	ECVF_Cheat);
+
+FOnShooterCharacterEquipWeapon AShooterCharacter::NotifyEquipWeapon;
+FOnShooterCharacterUnEquipWeapon AShooterCharacter::NotifyUnEquipWeapon;
+
+AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UShooterCharacterMovement>(ACharacter::CharacterMovementComponentName))
 {
 	Mesh1P = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("PawnMesh1P"));
-	Mesh1P->AttachParent = GetCapsuleComponent();
+	Mesh1P->SetupAttachment(GetCapsuleComponent());
 	Mesh1P->bOnlyOwnerSee = true;
 	Mesh1P->bOwnerNoSee = false;
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->bReceivesDecals = false;
-	Mesh1P->MeshComponentUpdateFlag = EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered;
+	Mesh1P->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 	Mesh1P->PrimaryComponentTick.TickGroup = TG_PrePhysics;
 	Mesh1P->SetCollisionObjectType(ECC_Pawn);
 	Mesh1P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -48,53 +69,6 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	BaseLookUpRate = 45.f;
 }
 
-/**	Implementation should check whether from given ObserverLocation
-*	implementer can be seen. If so OutSeenLocation should contain
-*	first visible location
-*  Return sight strength for how well the target is seen.
-*/
-
-bool AShooterCharacter::CanBeSeenFrom(const FVector& ObserverLocation, FVector& OutSeenLocation, int32& NumberOfLoSChecksPerformed, float& OutSightStrength, const AActor* IgnoreActor) const {
-	UWorld * World = GetWorld();
-	if (World) {
-		FCollisionQueryParams CollisionParams;
-		//const FName TraceTag("VisibilityTrace");
-		//World->DebugDrawTraceTag = TraceTag;
-		//CollisionParams.TraceTag = TraceTag;
-		CollisionParams.AddIgnoredActor(this);
-
-		const FVector HeadLocation = FVector(this->GetActorLocation().X, this->GetActorLocation().Y, this->GetActorLocation().Z + 60);
-		const FVector2D BoundsExtent = FVector2D(30, 30);
-		const FVector Vertex1 = FVector(ObserverLocation.X + BoundsExtent.X, ObserverLocation.Y + BoundsExtent.Y, ObserverLocation.Z);
-		const FVector Vertex2 = FVector(ObserverLocation.X - BoundsExtent.X, ObserverLocation.Y + BoundsExtent.Y, ObserverLocation.Z);
-		const FVector Vertex3 = FVector(ObserverLocation.X + BoundsExtent.X, ObserverLocation.Y - BoundsExtent.Y, ObserverLocation.Z);
-		const FVector Vertex4 = FVector(ObserverLocation.X - BoundsExtent.X, ObserverLocation.Y - BoundsExtent.Y, ObserverLocation.Z);
-
-		TArray<FVector> TestVisibilityPoints;
-		TestVisibilityPoints.Add(Vertex1);
-		TestVisibilityPoints.Add(Vertex2);
-		TestVisibilityPoints.Add(Vertex3);
-		TestVisibilityPoints.Add(Vertex4);
-
-		for (auto It = TestVisibilityPoints.CreateConstIterator(); It; ++It) {
-			FVector CurrentVertex = *It;
-			FHitResult OutHit;
-
-			const bool 	BlockingHitFound = World->LineTraceSingleByChannel(OutHit, HeadLocation, CurrentVertex, ECollisionChannel::ECC_Visibility, CollisionParams);
-			if (BlockingHitFound && Cast<AShooterCharacter>(OutHit.GetActor())) {
-				NumberOfLoSChecksPerformed = It.GetIndex() + 1;
-				OutSeenLocation = ObserverLocation;
-				OutSightStrength = FVector::Dist(ObserverLocation, OutHit.ImpactPoint);
-				return true;
-			}
-		}
-	}
-
-	NumberOfLoSChecksPerformed = 0;
-	OutSightStrength = 0;
-	return false;
-}
-
 void AShooterCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
@@ -107,7 +81,7 @@ void AShooterCharacter::PostInitializeComponents()
 
 	// set initial mesh visibility (3rd person view)
 	UpdatePawnMeshes();
-	
+
 	// create material instance for setting team colors (3rd person view)
 	for (int32 iMat = 0; iMat < GetMesh()->GetNumMaterials(); iMat++)
 	{
@@ -163,7 +137,7 @@ void AShooterCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 
 	// [client] as soon as PlayerState is assigned, set team colors of this pawn for local player
-	if (PlayerState != NULL)
+	if (GetPlayerState() != NULL)
 	{
 		UpdateTeamColorsAllMIDs();
 	}
@@ -186,12 +160,12 @@ bool AShooterCharacter::IsEnemyFor(AController* TestPC) const
 	}
 
 	AShooterPlayerState* TestPlayerState = Cast<AShooterPlayerState>(TestPC->PlayerState);
-	AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(PlayerState);
+	AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(GetPlayerState());
 
 	bool bIsEnemy = true;
-	if (GetWorld()->GameState && GetWorld()->GameState->GameModeClass)
+	if (GetWorld()->GetGameState())
 	{
-		const AShooterGameMode* DefGame = GetWorld()->GameState->GameModeClass->GetDefaultObject<AShooterGameMode>();
+		const AShooterGameMode* DefGame = GetWorld()->GetGameState()->GetDefaultGameMode<AShooterGameMode>();
 		if (DefGame && MyPlayerState && TestPlayerState)
 		{
 			bIsEnemy = DefGame->CanDealDamage(TestPlayerState, MyPlayerState);
@@ -201,7 +175,6 @@ bool AShooterCharacter::IsEnemyFor(AController* TestPC) const
 	return bIsEnemy;
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 // Meshes
 
@@ -209,10 +182,10 @@ void AShooterCharacter::UpdatePawnMeshes()
 {
 	bool const bFirstPerson = IsFirstPerson();
 
-	Mesh1P->MeshComponentUpdateFlag = !bFirstPerson ? EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered : EMeshComponentUpdateFlag::AlwaysTickPoseAndRefreshBones;
+	Mesh1P->VisibilityBasedAnimTickOption = !bFirstPerson ? EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered : EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	Mesh1P->SetOwnerNoSee(!bFirstPerson);
 
-	GetMesh()->MeshComponentUpdateFlag = bFirstPerson ? EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered : EMeshComponentUpdateFlag::AlwaysTickPoseAndRefreshBones;
+	GetMesh()->VisibilityBasedAnimTickOption = bFirstPerson ? EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered : EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	GetMesh()->SetOwnerNoSee(bFirstPerson);
 }
 
@@ -220,7 +193,7 @@ void AShooterCharacter::UpdateTeamColors(UMaterialInstanceDynamic* UseMID)
 {
 	if (UseMID)
 	{
-		AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(PlayerState);
+		AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(GetPlayerState());
 		if (MyPlayerState != NULL)
 		{
 			float MaterialParam = (float)MyPlayerState->GetTeamNum();
@@ -281,51 +254,48 @@ void AShooterCharacter::KilledBy(APawn* EventInstigator)
 
 float AShooterCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, class AActor* DamageCauser)
 {
-	if (this->GetName().Contains("Bot") && DamageCauser->GetAttachParentActor()->GetName().Contains("Bot")) {
-		return 0;
-	}else {
-		AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
-		if (MyPC && MyPC->HasGodMode())
-		{
-			return 0.f;
-		}
-
-		if (Health <= 0.f)
-		{
-			return 0.f;
-		}
-
-		// Modify based on game rules.
-		AShooterGameMode* const Game = GetWorld()->GetAuthGameMode<AShooterGameMode>();
-		Damage = Game ? Game->ModifyDamage(Damage, this, DamageEvent, EventInstigator, DamageCauser) : 0.f;
-
-		const float ActualDamage = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
-		if (ActualDamage > 0.f)
-		{
-			Health -= ActualDamage;
-			if (Health <= 0)
-			{
-				Die(ActualDamage, DamageEvent, EventInstigator, DamageCauser);
-			}
-			else
-			{
-				PlayHit(ActualDamage, DamageEvent, EventInstigator ? EventInstigator->GetPawn() : NULL, DamageCauser);
-			}
-
-			MakeNoise(1.0f, EventInstigator ? EventInstigator->GetPawn() : this);
-		}
-		return ActualDamage;
+	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
+	if (MyPC && MyPC->HasGodMode())
+	{
+		return 0.f;
 	}
+
+	if (Health <= 0.f)
+	{
+		return 0.f;
+	}
+
+	// Modify based on game rules.
+	AShooterGameMode* const Game = GetWorld()->GetAuthGameMode<AShooterGameMode>();
+	Damage = Game ? Game->ModifyDamage(Damage, this, DamageEvent, EventInstigator, DamageCauser) : 0.f;
+
+	const float ActualDamage = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
+	if (ActualDamage > 0.f)
+	{
+		Health -= ActualDamage;
+		if (Health <= 0)
+		{
+			Die(ActualDamage, DamageEvent, EventInstigator, DamageCauser);
+		}
+		else
+		{
+			PlayHit(ActualDamage, DamageEvent, EventInstigator ? EventInstigator->GetPawn() : NULL, DamageCauser);
+		}
+
+		MakeNoise(1.0f, EventInstigator ? EventInstigator->GetPawn() : this);
+	}
+
+	return ActualDamage;
 }
 
 
 bool AShooterCharacter::CanDie(float KillingDamage, FDamageEvent const& DamageEvent, AController* Killer, AActor* DamageCauser) const
 {
-	if ( bIsDying										// already dying
+	if (bIsDying										// already dying
 		|| IsPendingKill()								// already destroyed
 		|| Role != ROLE_Authority						// not authority
-		|| GetWorld()->GetAuthGameMode() == NULL
-		|| GetWorld()->GetAuthGameMode()->GetMatchState() == MatchState::LeavingMap)	// level transition occurring
+		|| GetWorld()->GetAuthGameMode<AShooterGameMode>() == NULL
+		|| GetWorld()->GetAuthGameMode<AShooterGameMode>()->GetMatchState() == MatchState::LeavingMap)	// level transition occurring
 	{
 		return false;
 	}
@@ -366,21 +336,23 @@ void AShooterCharacter::OnDeath(float KillingDamage, struct FDamageEvent const& 
 	}
 
 	bReplicateMovement = false;
-	bTearOff = true;
+	TearOff();
 	bIsDying = true;
 
 	if (Role == ROLE_Authority)
 	{
-		ReplicateHit(KillingDamage, DamageEvent, PawnInstigator, DamageCauser, true);	
+		ReplicateHit(KillingDamage, DamageEvent, PawnInstigator, DamageCauser, true);
 
 		// play the force feedback effect on the client player controller
-		APlayerController* PC = Cast<APlayerController>(Controller);
+		AShooterPlayerController* PC = Cast<AShooterPlayerController>(Controller);
 		if (PC && DamageEvent.DamageTypeClass)
 		{
 			UShooterDamageType *DamageType = Cast<UShooterDamageType>(DamageEvent.DamageTypeClass->GetDefaultObject());
-			if (DamageType && DamageType->KilledForceFeedback)
+			if (DamageType && DamageType->KilledForceFeedback && PC->IsVibrationEnabled())
 			{
-				PC->ClientPlayForceFeedback(DamageType->KilledForceFeedback, false, "Damage");
+				FForceFeedbackParameters FFParams;
+				FFParams.Tag = "Damage";
+				PC->ClientPlayForceFeedback(DamageType->KilledForceFeedback, FFParams);
 			}
 		}
 	}
@@ -393,7 +365,7 @@ void AShooterCharacter::OnDeath(float KillingDamage, struct FDamageEvent const& 
 
 	// remove all weapons
 	DestroyInventory();
-	
+
 	// switch back to 3rd person view
 	UpdatePawnMeshes();
 
@@ -410,8 +382,6 @@ void AShooterCharacter::OnDeath(float KillingDamage, struct FDamageEvent const& 
 		RunLoopAC->Stop();
 	}
 
-
-
 	if (GetMesh())
 	{
 		static FName CollisionProfileName(TEXT("Ragdoll"));
@@ -425,9 +395,16 @@ void AShooterCharacter::OnDeath(float KillingDamage, struct FDamageEvent const& 
 	// Ragdoll
 	if (DeathAnimDuration > 0.f)
 	{
+		// Trigger ragdoll a little before the animation early so the character doesn't
+		// blend back to its normal position.
+		const float TriggerRagdollTime = DeathAnimDuration - 0.7f;
+
+		// Enable blend physics so the bones are properly blending against the montage.
+		GetMesh()->bBlendPhysics = true;
+
 		// Use a local timer handle as we don't need to store it for later but we don't need to look for something to clear
 		FTimerHandle TimerHandle;
-		GetWorldTimerManager().SetTimer(TimerHandle, this, &AShooterCharacter::SetRagdollPhysics, FMath::Min(0.1f, DeathAnimDuration), false);
+		GetWorldTimerManager().SetTimer(TimerHandle, this, &AShooterCharacter::SetRagdollPhysics, FMath::Max(0.1f, TriggerRagdollTime), false);
 	}
 	else
 	{
@@ -446,13 +423,15 @@ void AShooterCharacter::PlayHit(float DamageTaken, struct FDamageEvent const& Da
 		ReplicateHit(DamageTaken, DamageEvent, PawnInstigator, DamageCauser, false);
 
 		// play the force feedback effect on the client player controller
-		APlayerController* PC = Cast<APlayerController>(Controller);
+		AShooterPlayerController* PC = Cast<AShooterPlayerController>(Controller);
 		if (PC && DamageEvent.DamageTypeClass)
 		{
 			UShooterDamageType *DamageType = Cast<UShooterDamageType>(DamageEvent.DamageTypeClass->GetDefaultObject());
-			if (DamageType && DamageType->HitForceFeedback)
+			if (DamageType && DamageType->HitForceFeedback && PC->IsVibrationEnabled())
 			{
-				PC->ClientPlayForceFeedback(DamageType->HitForceFeedback, false, "Damage");
+				FForceFeedbackParameters FFParams;
+				FFParams.Tag = "Damage";
+				PC->ClientPlayForceFeedback(DamageType->HitForceFeedback, FFParams);
 			}
 		}
 	}
@@ -461,7 +440,7 @@ void AShooterCharacter::PlayHit(float DamageTaken, struct FDamageEvent const& Da
 	{
 		ApplyDamageMomentum(DamageTaken, DamageEvent, PawnInstigator, DamageCauser);
 	}
-	
+
 	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
 	AShooterHUD* MyHUD = MyPC ? Cast<AShooterHUD>(MyPC->GetHUD()) : NULL;
 	if (MyHUD)
@@ -496,7 +475,6 @@ void AShooterCharacter::SetRagdollPhysics()
 	else
 	{
 		// initialize physics/etc
-		GetMesh()->SetAllBodiesSimulatePhysics(true);
 		GetMesh()->SetSimulatePhysics(true);
 		GetMesh()->WakeAllRigidBodies();
 		GetMesh()->bBlendPhysics = true;
@@ -513,11 +491,11 @@ void AShooterCharacter::SetRagdollPhysics()
 		// hide and set short lifespan
 		TurnOff();
 		SetActorHiddenInGame(true);
-		SetLifeSpan( 1.0f );
+		SetLifeSpan(1.0f);
 	}
 	else
 	{
-		SetLifeSpan( 10.0f );
+		SetLifeSpan(10.0f);
 	}
 }
 
@@ -544,7 +522,7 @@ void AShooterCharacter::ReplicateHit(float Damage, struct FDamageEvent const& Da
 	LastTakeHitInfo.ActualDamage = Damage;
 	LastTakeHitInfo.PawnInstigator = Cast<AShooterCharacter>(PawnInstigator);
 	LastTakeHitInfo.DamageCauser = DamageCauser;
-	LastTakeHitInfo.SetDamageEvent(DamageEvent);		
+	LastTakeHitInfo.SetDamageEvent(DamageEvent);
 	LastTakeHitInfo.bKilled = bKilled;
 	LastTakeHitInfo.EnsureReplication();
 
@@ -569,6 +547,10 @@ void AShooterCharacter::TornOff()
 	SetLifeSpan(25.f);
 }
 
+bool AShooterCharacter::IsMoving()
+{
+	return FMath::Abs(GetLastMovementInputVector().Size()) > 0.f;
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Inventory
@@ -580,7 +562,7 @@ void AShooterCharacter::SpawnDefaultInventory()
 		return;
 	}
 
-	int32 NumWeaponClasses = DefaultInventoryClasses.Num();	
+	int32 NumWeaponClasses = DefaultInventoryClasses.Num();
 	for (int32 i = 0; i < NumWeaponClasses; i++)
 	{
 		if (DefaultInventoryClasses[i])
@@ -681,8 +663,8 @@ void AShooterCharacter::OnRep_CurrentWeapon(AShooterWeapon* LastWeapon)
 
 void AShooterCharacter::SetCurrentWeapon(AShooterWeapon* NewWeapon, AShooterWeapon* LastWeapon)
 {
-	AShooterWeapon* LocalLastWeapon = NULL;
-	
+	AShooterWeapon* LocalLastWeapon = nullptr;
+
 	if (LastWeapon != NULL)
 	{
 		LocalLastWeapon = LastWeapon;
@@ -784,7 +766,6 @@ void AShooterCharacter::SetRunning(bool bNewRunning, bool bToggle)
 	{
 		ServerSetRunning(bNewRunning, bToggle);
 	}
-	UpdateRunSounds(bNewRunning);
 }
 
 bool AShooterCharacter::ServerSetRunning_Validate(bool bNewRunning, bool bToggle)
@@ -797,32 +778,31 @@ void AShooterCharacter::ServerSetRunning_Implementation(bool bNewRunning, bool b
 	SetRunning(bNewRunning, bToggle);
 }
 
-void AShooterCharacter::UpdateRunSounds(bool bNewRunning)
+void AShooterCharacter::UpdateRunSounds()
 {
-	if (bNewRunning)
+	const bool bIsRunSoundPlaying = RunLoopAC != nullptr && RunLoopAC->IsActive();
+	const bool bWantsRunSoundPlaying = IsRunning() && IsMoving();
+
+	// Don't bother playing the sounds unless we're running and moving.
+	if (!bIsRunSoundPlaying && bWantsRunSoundPlaying)
 	{
-		if (!RunLoopAC && RunLoopSound)
-		{
-			RunLoopAC = UGameplayStatics::SpawnSoundAttached(RunLoopSound, GetRootComponent());
-			if (RunLoopAC)
-			{
-				RunLoopAC->bAutoDestroy = false;
-			}
-			
-		}
-		else if (RunLoopAC)
+		if (RunLoopAC != nullptr)
 		{
 			RunLoopAC->Play();
 		}
-	}
-	else
-	{
-		if (RunLoopAC)
+		else if (RunLoopSound != nullptr)
 		{
-			RunLoopAC->Stop();
+			RunLoopAC = UGameplayStatics::SpawnSoundAttached(RunLoopSound, GetRootComponent());
+			if (RunLoopAC != nullptr)
+			{
+				RunLoopAC->bAutoDestroy = false;
+			}
 		}
-
-		if (RunStopSound)
+	}
+	else if (bIsRunSoundPlaying && !bWantsRunSoundPlaying)
+	{
+		RunLoopAC->Stop();
+		if (RunStopSound != nullptr)
 		{
 			UGameplayStatics::SpawnSoundAttached(RunStopSound, GetRootComponent());
 		}
@@ -832,7 +812,7 @@ void AShooterCharacter::UpdateRunSounds(bool bNewRunning)
 //////////////////////////////////////////////////////////////////////////
 // Animations
 
-float AShooterCharacter::PlayAnimMontage(class UAnimMontage* AnimMontage, float InPlayRate, FName StartSectionName) 
+float AShooterCharacter::PlayAnimMontage(class UAnimMontage* AnimMontage, float InPlayRate, FName StartSectionName)
 {
 	USkeletalMeshComponent* UseMesh = GetPawnMesh();
 	if (AnimMontage && UseMesh && UseMesh->AnimScriptInstance)
@@ -849,7 +829,7 @@ void AShooterCharacter::StopAnimMontage(class UAnimMontage* AnimMontage)
 	if (AnimMontage && UseMesh && UseMesh->AnimScriptInstance &&
 		UseMesh->AnimScriptInstance->Montage_IsPlaying(AnimMontage))
 	{
-		UseMesh->AnimScriptInstance->Montage_Stop(AnimMontage->BlendOutTime);
+		UseMesh->AnimScriptInstance->Montage_Stop(AnimMontage->BlendOut.GetBlendTime(), AnimMontage);
 	}
 }
 
@@ -866,34 +846,34 @@ void AShooterCharacter::StopAllAnimMontages()
 //////////////////////////////////////////////////////////////////////////
 // Input
 
-void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* InputComponent)
+void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
-	check(InputComponent);
-	InputComponent->BindAxis("MoveForward", this, &AShooterCharacter::MoveForward);
-	InputComponent->BindAxis("MoveRight", this, &AShooterCharacter::MoveRight);
-	InputComponent->BindAxis("MoveUp", this, &AShooterCharacter::MoveUp);
-	InputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	InputComponent->BindAxis("TurnRate", this, &AShooterCharacter::TurnAtRate);
-	InputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
-	InputComponent->BindAxis("LookUpRate", this, &AShooterCharacter::LookUpAtRate);
+	check(PlayerInputComponent);
+	PlayerInputComponent->BindAxis("MoveForward", this, &AShooterCharacter::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AShooterCharacter::MoveRight);
+	PlayerInputComponent->BindAxis("MoveUp", this, &AShooterCharacter::MoveUp);
+	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("TurnRate", this, &AShooterCharacter::TurnAtRate);
+	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUpRate", this, &AShooterCharacter::LookUpAtRate);
 
-	InputComponent->BindAction("Fire", IE_Pressed, this, &AShooterCharacter::OnStartFire);
-	InputComponent->BindAction("Fire", IE_Released, this, &AShooterCharacter::OnStopFire);
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AShooterCharacter::OnStartFire);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AShooterCharacter::OnStopFire);
 
-	InputComponent->BindAction("Targeting", IE_Pressed, this, &AShooterCharacter::OnStartTargeting);
-	InputComponent->BindAction("Targeting", IE_Released, this, &AShooterCharacter::OnStopTargeting);
+	PlayerInputComponent->BindAction("Targeting", IE_Pressed, this, &AShooterCharacter::OnStartTargeting);
+	PlayerInputComponent->BindAction("Targeting", IE_Released, this, &AShooterCharacter::OnStopTargeting);
 
-	InputComponent->BindAction("NextWeapon", IE_Pressed, this, &AShooterCharacter::OnNextWeapon);
-	InputComponent->BindAction("PrevWeapon", IE_Pressed, this, &AShooterCharacter::OnPrevWeapon);
+	PlayerInputComponent->BindAction("NextWeapon", IE_Pressed, this, &AShooterCharacter::OnNextWeapon);
+	PlayerInputComponent->BindAction("PrevWeapon", IE_Pressed, this, &AShooterCharacter::OnPrevWeapon);
 
-	InputComponent->BindAction("Reload", IE_Pressed, this, &AShooterCharacter::OnReload);
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AShooterCharacter::OnReload);
 
-	InputComponent->BindAction("Jump", IE_Pressed, this, &AShooterCharacter::OnStartJump);
-	InputComponent->BindAction("Jump", IE_Released, this, &AShooterCharacter::OnStopJump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AShooterCharacter::OnStartJump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AShooterCharacter::OnStopJump);
 
-	InputComponent->BindAction("Run", IE_Pressed, this, &AShooterCharacter::OnStartRunning);
-	InputComponent->BindAction("RunToggle", IE_Pressed, this, &AShooterCharacter::OnStartRunningToggle);
-	InputComponent->BindAction("Run", IE_Released, this, &AShooterCharacter::OnStopRunning);
+	PlayerInputComponent->BindAction("Run", IE_Pressed, this, &AShooterCharacter::OnStartRunning);
+	PlayerInputComponent->BindAction("RunToggle", IE_Pressed, this, &AShooterCharacter::OnStartRunningToggle);
+	PlayerInputComponent->BindAction("Run", IE_Released, this, &AShooterCharacter::OnStopRunning);
 }
 
 
@@ -904,7 +884,7 @@ void AShooterCharacter::MoveForward(float Val)
 		// Limit pitch when walking or falling
 		const bool bLimitRotation = (GetCharacterMovement()->IsMovingOnGround() || GetCharacterMovement()->IsFalling());
 		const FRotator Rotation = bLimitRotation ? GetActorRotation() : Controller->GetControlRotation();
-		const FVector Direction = FRotationMatrix(Rotation).GetScaledAxis( EAxis::X );
+		const FVector Direction = FRotationMatrix(Rotation).GetScaledAxis(EAxis::X);
 		AddMovementInput(Direction, Val);
 	}
 }
@@ -914,7 +894,7 @@ void AShooterCharacter::MoveRight(float Val)
 	if (Val != 0.f)
 	{
 		const FQuat Rotation = GetActorQuat();
-		const FVector Direction = FQuatRotationMatrix(Rotation).GetScaledAxis( EAxis::Y );
+		const FVector Direction = FQuatRotationMatrix(Rotation).GetScaledAxis(EAxis::Y);
 		AddMovementInput(Direction, Val);
 	}
 }
@@ -1055,12 +1035,12 @@ void AShooterCharacter::OnStopRunning()
 }
 
 bool AShooterCharacter::IsRunning() const
-{	
+{
 	if (!GetCharacterMovement())
 	{
 		return false;
 	}
-	
+
 	return (bWantsToRun || bWantsToRunToggled) && !GetVelocity().IsZero() && (GetVelocity().GetSafeNormal2D() | GetActorForwardVector()) > -0.1;
 }
 
@@ -1072,39 +1052,78 @@ void AShooterCharacter::Tick(float DeltaSeconds)
 	{
 		SetRunning(false, false);
 	}
-	else {
-	}
 	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
 	if (MyPC && MyPC->HasHealthRegen())
 	{
 		if (this->Health < this->GetMaxHealth())
 		{
-			this->Health +=  5 * DeltaSeconds;
+			this->Health += 5 * DeltaSeconds;
 			if (Health > this->GetMaxHealth())
 			{
 				Health = this->GetMaxHealth();
 			}
 		}
 	}
-	
-	if (LowHealthSound && GEngine->UseSound())
+
+	if (GEngine->UseSound())
 	{
-		if ((this->Health > 0 && this->Health < this->GetMaxHealth() * LowHealthPercentage) && (!LowHealthWarningPlayer || !LowHealthWarningPlayer->IsPlaying()))
+		if (LowHealthSound)
 		{
-			LowHealthWarningPlayer = UGameplayStatics::SpawnSoundAttached(LowHealthSound, GetRootComponent(),
-				NAME_None, FVector(ForceInit), EAttachLocation::KeepRelativeOffset, true);
-			LowHealthWarningPlayer->SetVolumeMultiplier(0.0f);
-		} 
-		else if ((this->Health > this->GetMaxHealth() * LowHealthPercentage || this->Health < 0) && LowHealthWarningPlayer && LowHealthWarningPlayer->IsPlaying())
-		{
-			LowHealthWarningPlayer->Stop();
+			if ((this->Health > 0 && this->Health < this->GetMaxHealth() * LowHealthPercentage) && (!LowHealthWarningPlayer || !LowHealthWarningPlayer->IsPlaying()))
+			{
+				LowHealthWarningPlayer = UGameplayStatics::SpawnSoundAttached(LowHealthSound, GetRootComponent(),
+					NAME_None, FVector(ForceInit), EAttachLocation::KeepRelativeOffset, true);
+				if (LowHealthWarningPlayer)
+				{
+					LowHealthWarningPlayer->SetVolumeMultiplier(0.0f);
+				}
+			}
+			else if ((this->Health > this->GetMaxHealth() * LowHealthPercentage || this->Health < 0) && LowHealthWarningPlayer && LowHealthWarningPlayer->IsPlaying())
+			{
+				LowHealthWarningPlayer->Stop();
+			}
+			if (LowHealthWarningPlayer && LowHealthWarningPlayer->IsPlaying())
+			{
+				const float MinVolume = 0.3f;
+				const float VolumeMultiplier = (1.0f - (this->Health / (this->GetMaxHealth() * LowHealthPercentage)));
+				LowHealthWarningPlayer->SetVolumeMultiplier(MinVolume + (1.0f - MinVolume) * VolumeMultiplier);
+			}
 		}
-		if (LowHealthWarningPlayer && LowHealthWarningPlayer->IsPlaying())
+
+		UpdateRunSounds();
+	}
+
+	const APlayerController* PC = Cast<APlayerController>(GetController());
+	const bool bLocallyControlled = (PC ? PC->IsLocalController() : false);
+	const uint32 UniqueID = GetUniqueID();
+	FAudioThread::RunCommandOnAudioThread([UniqueID, bLocallyControlled]()
+	{
+	    USoundNodeLocalPlayer::GetLocallyControlledActorCache().Add(UniqueID, bLocallyControlled);
+	});
+	
+	TArray<FVector> PointsToTest;
+	BuildPauseReplicationCheckPoints(PointsToTest);
+
+	if (NetVisualizeRelevancyTestPoints == 1)
+	{
+		for (FVector PointToTest : PointsToTest)
 		{
-			const float MinVolume = 0.3f;
-			const float VolumeMultiplier = (1.0f - (this->Health / (this->GetMaxHealth() * LowHealthPercentage)));
-			LowHealthWarningPlayer->SetVolumeMultiplier(MinVolume + (1.0f - MinVolume) * VolumeMultiplier);
+			DrawDebugSphere(GetWorld(), PointToTest, 10.0f, 8, FColor::Red);
 		}
+	}
+}
+
+void AShooterCharacter::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	if (!GExitPurge)
+	{
+		const uint32 UniqueID = GetUniqueID();
+		FAudioThread::RunCommandOnAudioThread([UniqueID]()
+		{
+			USoundNodeLocalPlayer::GetLocallyControlledActorCache().Remove(UniqueID);
+		});
 	}
 }
 
@@ -1120,35 +1139,72 @@ void AShooterCharacter::OnStartJump()
 void AShooterCharacter::OnStopJump()
 {
 	bPressedJump = false;
+	StopJumping();
 }
 
 //////////////////////////////////////////////////////////////////////////
 // Replication
 
-void AShooterCharacter::PreReplication( IRepChangedPropertyTracker & ChangedPropertyTracker )
+void AShooterCharacter::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
 {
-	Super::PreReplication( ChangedPropertyTracker );
+	Super::PreReplication(ChangedPropertyTracker);
 
 	// Only replicate this property for a short duration after it changes so join in progress players don't get spammed with fx when joining late
-	DOREPLIFETIME_ACTIVE_OVERRIDE( AShooterCharacter, LastTakeHitInfo, GetWorld() && GetWorld()->GetTimeSeconds() < LastTakeHitTimeTimeout );
+	DOREPLIFETIME_ACTIVE_OVERRIDE(AShooterCharacter, LastTakeHitInfo, GetWorld() && GetWorld()->GetTimeSeconds() < LastTakeHitTimeTimeout);
 }
 
-void AShooterCharacter::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
+void AShooterCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps( OutLifetimeProps );
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// only to local owner: weapon change requests are locally instigated, other clients don't need it
-	DOREPLIFETIME_CONDITION( AShooterCharacter, Inventory,			COND_OwnerOnly );
+	DOREPLIFETIME_CONDITION(AShooterCharacter, Inventory, COND_OwnerOnly);
 
 	// everyone except local owner: flag change is locally instigated
-	DOREPLIFETIME_CONDITION( AShooterCharacter, bIsTargeting,		COND_SkipOwner );
-	DOREPLIFETIME_CONDITION( AShooterCharacter, bWantsToRun,		COND_SkipOwner );
+	DOREPLIFETIME_CONDITION(AShooterCharacter, bIsTargeting, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(AShooterCharacter, bWantsToRun, COND_SkipOwner);
 
-	DOREPLIFETIME_CONDITION( AShooterCharacter, LastTakeHitInfo,	COND_Custom );
+	DOREPLIFETIME_CONDITION(AShooterCharacter, LastTakeHitInfo, COND_Custom);
 
 	// everyone
-	DOREPLIFETIME( AShooterCharacter, CurrentWeapon );
-	DOREPLIFETIME( AShooterCharacter, Health );
+	DOREPLIFETIME(AShooterCharacter, CurrentWeapon);
+	DOREPLIFETIME(AShooterCharacter, Health);
+}
+
+bool AShooterCharacter::IsReplicationPausedForConnection(const FNetViewer& ConnectionOwnerNetViewer)
+{
+	if (NetEnablePauseRelevancy == 1)
+	{
+		APlayerController* PC = Cast<APlayerController>(ConnectionOwnerNetViewer.InViewer);
+		check(PC);
+
+		FVector ViewLocation;
+		FRotator ViewRotation;
+		PC->GetPlayerViewPoint(ViewLocation, ViewRotation);
+
+		FCollisionQueryParams CollisionParams(SCENE_QUERY_STAT(LineOfSight), true, PC->GetPawn());
+		CollisionParams.AddIgnoredActor(this);
+
+		TArray<FVector> PointsToTest;
+		BuildPauseReplicationCheckPoints(PointsToTest);
+
+		for (FVector PointToTest : PointsToTest)
+		{
+			if (!GetWorld()->LineTraceTestByChannel(PointToTest, ViewLocation, ECC_Visibility, CollisionParams))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+void AShooterCharacter::OnReplicationPausedChanged(bool bIsReplicationPaused)
+{
+	GetMesh()->SetHiddenInGame(bIsReplicationPaused, true);
 }
 
 AShooterWeapon* AShooterCharacter::GetWeapon() const
@@ -1171,9 +1227,9 @@ USkeletalMeshComponent* AShooterCharacter::GetPawnMesh() const
 	return IsFirstPerson() ? Mesh1P : GetMesh();
 }
 
-USkeletalMeshComponent* AShooterCharacter::GetSpecifcPawnMesh( bool WantFirstPerson ) const
+USkeletalMeshComponent* AShooterCharacter::GetSpecifcPawnMesh(bool WantFirstPerson) const
 {
-	return WantFirstPerson == true  ? Mesh1P : GetMesh();
+	return WantFirstPerson == true ? Mesh1P : GetMesh();
 }
 
 FName AShooterCharacter::GetWeaponAttachPoint() const
@@ -1227,4 +1283,21 @@ void AShooterCharacter::UpdateTeamColorsAllMIDs()
 	{
 		UpdateTeamColors(MeshMIDs[i]);
 	}
+}
+
+void AShooterCharacter::BuildPauseReplicationCheckPoints(TArray<FVector>& RelevancyCheckPoints)
+{
+	FBoxSphereBounds Bounds = GetCapsuleComponent()->CalcBounds(GetCapsuleComponent()->GetComponentTransform());
+	FBox BoundingBox = Bounds.GetBox();
+	float XDiff = Bounds.BoxExtent.X * 2;
+	float YDiff = Bounds.BoxExtent.Y * 2;
+
+	RelevancyCheckPoints.Add(BoundingBox.Min);
+	RelevancyCheckPoints.Add(FVector(BoundingBox.Min.X + XDiff, BoundingBox.Min.Y, BoundingBox.Min.Z));
+	RelevancyCheckPoints.Add(FVector(BoundingBox.Min.X, BoundingBox.Min.Y + YDiff, BoundingBox.Min.Z));
+	RelevancyCheckPoints.Add(FVector(BoundingBox.Min.X + XDiff, BoundingBox.Min.Y + YDiff, BoundingBox.Min.Z));
+	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X - XDiff, BoundingBox.Max.Y, BoundingBox.Max.Z));
+	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
+	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X - XDiff, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
+	RelevancyCheckPoints.Add(BoundingBox.Max);
 }

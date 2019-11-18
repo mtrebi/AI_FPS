@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "Engine/Console.h"
@@ -11,11 +11,14 @@
 #include "ShooterGameInstance.h"
 #include "Player/ShooterLocalPlayer.h"
 #include "ShooterGameUserSettings.h"
+#include "Slate/SceneViewport.h"
 
 #define LOCTEXT_NAMESPACE "SShooterMenuWidget"
 
 #if PLATFORM_XBOXONE
 #define PROFILE_SWAPPING	1
+#else
+#define PROFILE_SWAPPING	0
 #endif
 
 void SShooterMenuWidget::Construct(const FArguments& InArgs)
@@ -154,6 +157,8 @@ void SShooterMenuWidget::Construct(const FArguments& InArgs)
 						.AutoWidth()
 						[
 							SNew(SVerticalBox)
+							.Clipping(EWidgetClipping::ClipToBounds)
+
 							+ SVerticalBox::Slot()
 							.AutoHeight()
 							.Padding(TAttribute<FMargin>(this,&SShooterMenuWidget::GetLeftMenuOffset))
@@ -167,13 +172,17 @@ void SShooterMenuWidget::Construct(const FArguments& InArgs)
 								.HAlign(HAlign_Left)
 								[
 									SAssignNew(LeftBox, SVerticalBox)
+									.Clipping(EWidgetClipping::ClipToBounds)
 								]
 							]
 						]
+						
 						+ SHorizontalBox::Slot()
 						.AutoWidth()
 						[
 							SNew(SVerticalBox)
+							.Clipping(EWidgetClipping::ClipToBounds)
+
 							+ SVerticalBox::Slot()
 							.Padding(TAttribute<FMargin>(this,&SShooterMenuWidget::GetSubMenuOffset))
 							.AutoHeight()
@@ -187,6 +196,7 @@ void SShooterMenuWidget::Construct(const FArguments& InArgs)
 								.HAlign(HAlign_Left)
 								[
 									SAssignNew(RightBox, SVerticalBox)
+									.Clipping(EWidgetClipping::ClipToBounds)
 								]
 							]
 						]
@@ -231,7 +241,7 @@ bool SShooterMenuWidget::ProfileUISwap(const int ControllerIndex) const
 {
 	if(IsProfileSwapActive())
 	{
-		const IOnlineExternalUI::FOnLoginUIClosedDelegate Delegate = IOnlineExternalUI::FOnLoginUIClosedDelegate::CreateSP( this, &SShooterMenuWidget::HandleProfileUISwapClosed );
+		const FOnLoginUIClosedDelegate Delegate = FOnLoginUIClosedDelegate::CreateSP( this, &SShooterMenuWidget::HandleProfileUISwapClosed );
 		if ( ShooterUIHelpers::Get().ProfileSwapUI(ControllerIndex, false, &Delegate) )
 		{
 			UShooterGameInstance* GameInstance = PlayerOwner.IsValid() ? Cast< UShooterGameInstance >( PlayerOwner->GetGameInstance() ) : nullptr;
@@ -246,7 +256,7 @@ bool SShooterMenuWidget::ProfileUISwap(const int ControllerIndex) const
 	return false;
 }
 
-void SShooterMenuWidget::HandleProfileUISwapClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex)
+void SShooterMenuWidget::HandleProfileUISwapClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex, const FOnlineError& Error)
 {
 	UShooterGameInstance * GameInstance = PlayerOwner.IsValid() ? Cast< UShooterGameInstance >( PlayerOwner->GetGameInstance() ) : nullptr;
 
@@ -260,7 +270,7 @@ void SShooterMenuWidget::HandleProfileUISwapClosed(TSharedPtr<const FUniqueNetId
 	{
 		// If the id is the same, the user picked the existing profile
 		// (use the cached unique net id, since we want to compare to the user that was selected at "press start"
-		const TSharedPtr<const FUniqueNetId> OwnerId = PlayerOwner->GetCachedUniqueNetId();
+		FUniqueNetIdRepl OwnerId = PlayerOwner->GetCachedUniqueNetId();
 		if( OwnerId.IsValid() && UniqueId.IsValid() && *OwnerId == *UniqueId)
 		{
 			return;
@@ -636,7 +646,8 @@ void SShooterMenuWidget::Tick( const FGeometry& AllottedGeometry, const double I
 		FViewport* Viewport = GEngine->GameViewport->ViewportFrame->GetViewport();
 		if (Viewport)
 		{
-			ScreenRes = Viewport->GetSizeXY();
+			const FVector2D Size = Viewport->GetSizeXY();
+			ScreenRes = (Size / AllottedGeometry.Scale).IntPoint();
 		}
 	}
 
@@ -904,13 +915,13 @@ FReply SShooterMenuWidget::OnKeyDown(const FGeometry& MyGeometry, const FKeyEven
 			ConfirmMenuItem();
 			Result = FReply::Handled();
 		}
-		else if (Key == EKeys::Gamepad_FaceButton_Bottom && !InKeyEvent.IsRepeat())
+		else if (Key == EKeys::Virtual_Accept && !InKeyEvent.IsRepeat())
 		{
 			ControllerFacebuttonDownPressed();
 			ConfirmMenuItem();
 			Result = FReply::Handled();
 		}
-		else if ((Key == EKeys::Escape || Key == EKeys::Gamepad_FaceButton_Right || Key == EKeys::Gamepad_Special_Left || Key == EKeys::Global_Back || Key == EKeys::Global_View) && !InKeyEvent.IsRepeat())
+		else if ((Key == EKeys::Escape || Key == EKeys::Virtual_Back || Key == EKeys::Gamepad_Special_Left || Key == EKeys::Global_Back || Key == EKeys::Global_View) && !InKeyEvent.IsRepeat())
 		{
 			MenuGoBack();
 			Result = FReply::Handled();

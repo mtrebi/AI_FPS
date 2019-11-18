@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -117,6 +117,12 @@ protected:
 	 */
 	void OnNoMatchesAvailable();
 
+
+	/**
+	 * Called when this instance is starting up as a dedicated server
+	 */
+	virtual void RegisterServer() override;
+
 	/* 
 	 * Event triggered when a presence session is created
 	 *
@@ -160,6 +166,17 @@ public:
 	 * @return bool true if successful, false otherwise
 	 */
 	bool HostSession(TSharedPtr<const FUniqueNetId> UserId, FName SessionName, const FString& GameType, const FString& MapName, bool bIsLAN, bool bIsPresence, int32 MaxNumPlayers);
+
+	/**
+	 * Host a new online session with specified settings
+	 *
+	 * @param UserId user that initiated the request
+	 * @param SessionName name of session 
+	 * @param SessionSettings settings to create session with
+	 *
+	 * @return bool true if successful, false otherwise
+	 */
+	bool HostSession(const TSharedPtr<const FUniqueNetId> UserId, const FName SessionName, const FOnlineSessionSettings& SessionSettings);
 
 	/**
 	 * Find an online session

@@ -32,11 +32,11 @@ void UPlayerDistanceTest::RunTest(FEnvQueryInstance& QueryInstance) const {
 	float MaxThresholdValue = FloatValueMax.GetValue();
 
 
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	const FVector PlayerPosition = HelperMethods::GetPlayerPositionFromAI(World);
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
 	{
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		const float Distance = FVector::Dist(PlayerPosition, ItemLocation);
 
 		It.SetScore(TestPurpose, FilterType, Distance, MinThresholdValue, MaxThresholdValue);

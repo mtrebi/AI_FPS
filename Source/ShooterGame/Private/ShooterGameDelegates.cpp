@@ -1,9 +1,34 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "Online/ShooterPlayerState.h"
 #include "GameDelegates.h"
+#include "IPlatformFilePak.h"
 
+#include "UObject/PackageReload.h"
+
+//#include "Runtime/RHI/Public/RHICommandlist.h"
+
+// Global struct for registering delegates super early
+struct FShooterGameGlobalDelegateInit
+{
+	FShooterGameGlobalDelegateInit()
+	{
+		FPakPlatformFile::GetPakChunkSignatureCheckFailedHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakChunkSignatureCheckFailed);
+		FPakPlatformFile::GetPakMasterSignatureTableCheckFailureHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakMasterSignatureTableCheckFailure);
+	}
+
+	static void HandlePakChunkSignatureCheckFailed(const FPakChunkSignatureCheckFailedData& Data)
+	{
+		UE_LOG(LogShooter, Fatal, TEXT("Pak chunk signature check failed!"));
+	}
+
+	static void HandlePakMasterSignatureTableCheckFailure(const FString& InPakFilename)
+	{
+		UE_LOG(LogShooter, Fatal, TEXT("Pak master signature table check failed for pak '%s'"), *InPakFilename);
+	}
+}
+GShooterGameGlobalDelegateInit;
 
 #if !UE_BUILD_SHIPPING
 
@@ -48,7 +73,7 @@ static void WebServerDelegate(int32 UserIndex, const FString& Action, const FStr
 				if (Player)
 				{
 					// get the shoter game
-					AShooterGameState* const GameState = Cast<AShooterGameState>(Player->PlayerController->GetWorld()->GameState);
+					AShooterGameState* const GameState = Player->PlayerController->GetWorld()->GetGameState<AShooterGameState>();
 
 
 					RankedPlayerMap Players;
@@ -72,32 +97,6 @@ static void WebServerDelegate(int32 UserIndex, const FString& Action, const FStr
 				Response.Add(TEXT("Body"), ScoreboardStr);
 			}
 		}
-	}
-}
-
-static void AssignStreamingChunk(const FString& PackageToAdd, const FString& LastLoadedMapName, const TArray<int32>& AssetRegistryChunkIDs, const TArray<int32>& ExistingChunkIds, TArray<int32>& OutChunkIndex)
-{
-	const int32 BasePak = 0;
-	const int32 SanctuaryPak = 1;
-	const int32 HighrisePak = 2;
-
-	// Add assets to map paks unless they're engine packages or have already been added to the base (engine) pak.
-	if (!PackageToAdd.StartsWith("/Engine/"))
-	{
-		if ((LastLoadedMapName.Find(TEXT("Sanctuary")) >= 0 || PackageToAdd.Find(TEXT("Sanctuary")) >= 0) &&
-				!ExistingChunkIds.Contains(BasePak))
-		{
-			OutChunkIndex.Add(SanctuaryPak);
-		}
-		else if ((LastLoadedMapName.Find(TEXT("Highrise")) >= 0 || PackageToAdd.Find(TEXT("Highrise")) >= 0) &&
-			!ExistingChunkIds.Contains(BasePak))
-		{
-			OutChunkIndex.Add(HighrisePak);
-		}
-	}
-	if (OutChunkIndex.Num() == 0)
-	{
-		OutChunkIndex.Add(BasePak);
 	}
 }
 
@@ -145,10 +144,85 @@ static void ExtendedSaveGameInfoDelegate(const TCHAR* SaveName, const EGameDeleg
 	}
 }
 
+static void ReloadHandler( EPackageReloadPhase ReloadPhase, FPackageReloadedEvent* Event)
+{
+	if ( ReloadPhase == EPackageReloadPhase::PostPackageFixup)
+	{
+		// reinitialize allthe material instances
+
+
+		/*{
+			// fixup uniform expressions
+			UMaterialInterface::RecacheAllMaterialUniformExpressions();
+		}*/
+
+		/*for (TObjectIterator<UMaterialInstance> It; It; ++It)
+		{
+			UMaterialInstance* Material = *It;
+			//Material->InitResources();
+			Material->RebuildResource();
+		}*/
+	}
+}
+
+#define EXPERIMENTAL_ENABLEHOTRELOAD 0
+static void ReloadPackagesCallback( const TArray<FString>& PackageNames)
+{
+#if EXPERIMENTAL_ENABLEHOTRELOAD
+	TArray<UPackage*> PackagesToReload;
+	TArray<UPackage*> MaterialPackagesToReload;
+	for (const FString& PackageName : PackageNames)
+	{
+		UPackage* Package = FindPackage(nullptr, *PackageName);
+
+		if (Package == nullptr)
+		{
+			// UE_LOG(, Log, TEXT("Unable to find package in memory %s"), *PackageName);
+		}
+		else
+		{
+			if ( Package->HasAnyPackageFlags(PKG_ContainsMap || PKG_ContainsMap) )
+			{
+				continue;
+			}
+			PackagesToReload.Add(Package);
+		}
+	}
+
+
+	// see what's in these packages
+
+	if (PackagesToReload.Num())
+	{
+		SortPackagesForReload(PackagesToReload);
+
+		TArray<FReloadPackageData> PackagesToReloadData;
+		PackagesToReloadData.Empty(PackagesToReload.Num());
+		for (UPackage* PackageToReload : PackagesToReload)
+		{
+			PackagesToReloadData.Emplace(PackageToReload, LOAD_None);
+		}
+
+		TArray<UPackage*> ReloadedPackages;
+
+		FDelegateHandle Handle = FCoreUObjectDelegates::OnPackageReloaded.AddStatic(&ReloadHandler);
+
+		FText ErrorMessage;
+		GShouldVerifyGCAssumptions = false;
+		GUObjectArray.DisableDisregardForGC();
+
+		::ReloadPackages(PackagesToReloadData, ReloadedPackages, 500);
+
+		FCoreUObjectDelegates::OnPackageReloaded.Remove(Handle);
+	}
+#endif
+}
+
 void InitializeShooterGameDelegates()
 {
 	FGameDelegates::Get().GetWebServerActionDelegate() = FWebServerActionDelegate::CreateStatic(WebServerDelegate);
-	FGameDelegates::Get().GetAssignStreamingChunkDelegate() = FAssignStreamingChunkDelegate::CreateStatic(AssignStreamingChunk);
 	FGameDelegates::Get().GetAssignLayerChunkDelegate() = FAssignLayerChunkDelegate::CreateStatic(AssignLayerChunkDelegate);
 	FGameDelegates::Get().GetExtendedSaveGameInfoDelegate() = FExtendedSaveGameInfoDelegate::CreateStatic(ExtendedSaveGameInfoDelegate);
+
+	FCoreUObjectDelegates::NetworkFileRequestPackageReload.BindStatic(&ReloadPackagesCallback);
 }

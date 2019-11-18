@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGame.h"
 #include "ShooterStyle.h"
@@ -28,12 +28,13 @@ FName FShooterStyle::GetStyleSetName()
 	return StyleSetName;
 }
 
-#define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( FPaths::GameContentDir() / "Slate"/ RelativePath + TEXT(".png"), __VA_ARGS__ )
-#define BOX_BRUSH( RelativePath, ... ) FSlateBoxBrush( FPaths::GameContentDir() / "Slate"/ RelativePath + TEXT(".png"), __VA_ARGS__ )
-#define BORDER_BRUSH( RelativePath, ... ) FSlateBorderBrush( FPaths::GameContentDir() / "Slate"/ RelativePath + TEXT(".png"), __VA_ARGS__ )
-#define TTF_FONT( RelativePath, ... ) FSlateFontInfo( FPaths::GameContentDir() / "Slate"/ RelativePath + TEXT(".ttf"), __VA_ARGS__ )
-#define OTF_FONT( RelativePath, ... ) FSlateFontInfo( FPaths::GameContentDir() / "Slate"/ RelativePath + TEXT(".otf"), __VA_ARGS__ )
+#define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( FPaths::ProjectContentDir() / "Slate"/ RelativePath + TEXT(".png"), __VA_ARGS__ )
+#define BOX_BRUSH( RelativePath, ... ) FSlateBoxBrush( FPaths::ProjectContentDir() / "Slate"/ RelativePath + TEXT(".png"), __VA_ARGS__ )
+#define BORDER_BRUSH( RelativePath, ... ) FSlateBorderBrush( FPaths::ProjectContentDir() / "Slate"/ RelativePath + TEXT(".png"), __VA_ARGS__ )
+#define TTF_FONT( RelativePath, ... ) FSlateFontInfo( FPaths::ProjectContentDir() / "Slate"/ RelativePath + TEXT(".ttf"), __VA_ARGS__ )
+#define OTF_FONT( RelativePath, ... ) FSlateFontInfo( FPaths::ProjectContentDir() / "Slate"/ RelativePath + TEXT(".otf"), __VA_ARGS__ )
 
+PRAGMA_DISABLE_OPTIMIZATION
 TSharedRef< FSlateStyleSet > FShooterStyle::Create()
 {
 	TSharedRef<FSlateStyleSet> StyleRef = FSlateGameResources::New(FShooterStyle::GetStyleSetName(), "/Game/UI/Styles", "/Game/UI/Styles");
@@ -57,6 +58,12 @@ TSharedRef< FSlateStyleSet > FShooterStyle::Create()
 		.SetColorAndOpacity(FLinearColor::White)
 		.SetShadowOffset(FIntPoint(-1,1))
 		);
+
+	Style.Set("ShooterGame.MenuStoreListTextStyle", FTextBlockStyle()
+		.SetFont(TTF_FONT("Fonts/Roboto-Black", 14))
+		.SetColorAndOpacity(FLinearColor::White)
+		.SetShadowOffset(FIntPoint(-1, 1))
+	);
 
 	Style.Set("ShooterGame.ScoreboardListTextStyle", FTextBlockStyle()
 		.SetFont(TTF_FONT("Fonts/Roboto-Black", 14))
@@ -112,8 +119,25 @@ TSharedRef< FSlateStyleSet > FShooterStyle::Create()
 		.SetShadowOffset(FIntPoint(-1,1))
 		);
 
+	Style.Set("ShooterGame.Switch.Left", FInlineTextImageStyle()
+		.SetImage(IMAGE_BRUSH("Images/SwitchButtonLeft", FVector2D(32, 32)))
+		);
+
+	Style.Set("ShooterGame.Switch.Right", FInlineTextImageStyle()
+		.SetImage(IMAGE_BRUSH("Images/SwitchButtonRight", FVector2D(32, 32)))
+		);
+
+	Style.Set("ShooterGame.Switch.Up", FInlineTextImageStyle()
+		.SetImage(IMAGE_BRUSH("Images/SwitchButtonUp", FVector2D(32, 32)))
+		);
+
+	Style.Set("ShooterGame.Switch.Down", FInlineTextImageStyle()
+		.SetImage(IMAGE_BRUSH("Images/SwitchButtonDown", FVector2D(32, 32)))
+		);
+
 	return StyleRef;
 }
+PRAGMA_ENABLE_OPTIMIZATION
 
 #undef IMAGE_BRUSH
 #undef BOX_BRUSH

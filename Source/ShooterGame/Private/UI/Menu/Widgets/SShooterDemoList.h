@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -7,6 +7,7 @@
 #include "ShooterGame.h"
 #include "SShooterMenuWidget.h"
 #include "NetworkReplayStreaming.h"
+#include "Misc/NetworkVersion.h"
 
 struct FDemoEntry;
 
@@ -56,7 +57,7 @@ public:
 	void OnBuildDemoListFinished();
 
 	/** Called when we get results from the replay streaming interface */
-	void OnEnumerateStreamsComplete(const TArray<FNetworkReplayStreamInfo>& Streams);
+	void OnEnumerateStreamsComplete(const FEnumerateStreamsResult& Result);
 
 	/** Play chosen demo */
 	void PlayDemo();
@@ -71,7 +72,7 @@ public:
 	FReply OnDemoDeleteCancel();
 
 	/** Called by delegate when the replay streaming interface has finished deleting */
-	void OnDeleteFinishedStreamComplete(bool bWasSuccessful);
+	void OnDeleteFinishedStreamComplete(const FDeleteFinishedStreamResult& Result);
 
 	/** selects item at current + MoveBy index */
 	void MoveSelection(int32 MoveBy);

@@ -28,15 +28,15 @@ void UNearCoverAnnotationTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	bool bWantsHit = BoolValue.GetValue();
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
-	UNavigationSystem* NavSys = World->GetNavigationSystem();
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 	
 
 	if (!NavSys) {
 		return;
 	}
 
-	ANavigationData* NavData = NavSys->GetMainNavData(FNavigationSystem::Create);
+	ANavigationData* NavData = NavSys->GetDefaultNavDataInstance(FNavigationSystem::Create);
 	AMyRecastNavMesh* MyNavMesh = Cast<AMyRecastNavMesh>(NavData);
 	FRecastQueryFilter_Example* MyFRecastQueryFilter = MyNavMesh->GetCustomFilter();
 
