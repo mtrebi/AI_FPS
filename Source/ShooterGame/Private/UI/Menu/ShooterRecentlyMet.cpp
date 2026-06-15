@@ -1,12 +1,12 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterRecentlyMet.h"
+#include "ShooterGame.h"
 #include "ShooterTypes.h"
 #include "ShooterStyle.h"
 #include "ShooterOptionsWidgetStyle.h"
 #include "ShooterGameUserSettings.h"
-#include "ShooterPersistentUser.h"
+#include "Player/ShooterPersistentUser.h"
 #include "Player/ShooterLocalPlayer.h"
 
 #define LOCTEXT_NAMESPACE "ShooterGame.HUD.Menu"
@@ -105,7 +105,7 @@ void FShooterRecentlyMet::UpdateRecentlyMet(int32 NewOwnerIndex)
 		MaxRecentlyMetIndex = PlayerArray.Num() - 1;
 	}
 
-	MenuHelper::AddMenuItemSP(RecentlyMetItem, LOCTEXT("Close", "CLOSE"), this, &FShooterRecentlyMet::OnApplySettings);
+//	MenuHelper::AddMenuItemSP(RecentlyMetItem, LOCTEXT("Close", "CLOSE"), this, &FShooterRecentlyMet::OnApplySettings);
 }
 
 void FShooterRecentlyMet::IncrementRecentlyMetCounter()

@@ -1,5 +1,6 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "ShooterGameDelegates.h"
 #include "ShooterGame.h"
 #include "Online/ShooterPlayerState.h"
 #include "GameDelegates.h"
@@ -14,8 +15,8 @@ struct FShooterGameGlobalDelegateInit
 {
 	FShooterGameGlobalDelegateInit()
 	{
-		FPakPlatformFile::GetPakChunkSignatureCheckFailedHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakChunkSignatureCheckFailed);
-		FPakPlatformFile::GetPakMasterSignatureTableCheckFailureHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakMasterSignatureTableCheckFailure);
+		//FPakPlatformFile::GetPakChunkSignatureCheckFailedHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakChunkSignatureCheckFailed);
+		//FPakPlatformFile::GetPakMasterSignatureTableCheckFailureHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakMasterSignatureTableCheckFailure);
 	}
 
 	static void HandlePakChunkSignatureCheckFailed(const FPakChunkSignatureCheckFailedData& Data)
@@ -27,31 +28,31 @@ struct FShooterGameGlobalDelegateInit
 	{
 		UE_LOG(LogShooter, Fatal, TEXT("Pak master signature table check failed for pak '%s'"), *InPakFilename);
 	}
-}
-GShooterGameGlobalDelegateInit;
+};
+//GShooterGameGlobalDelegateInit;
 
 #if !UE_BUILD_SHIPPING
 
-#if PLATFORM_PS4
-#include "PS4ChunkInstall.h"
-static void PlayGoNext()
-{
-	IPlatformChunkInstall* ChunkInstaller = FPlatformMisc::GetPlatformChunkInstall();
-	if (ChunkInstaller)
-	{
-		ChunkInstaller->DebugStartNextChunk();
-	}
-}
+// #if PLATFORM_PS4
+// #include "PS4ChunkInstall.h"
+// static void PlayGoNext()
+// {
+// 	IPlatformChunkInstall* ChunkInstaller = FPlatformMisc::GetPlatformChunkInstall();
+// 	if (ChunkInstaller)
+// 	{
+// 		ChunkInstaller->DebugStartNextChunk();
+// 	}
+// }
+//
+// FAutoConsoleCommand CmdPlayGoNext(
+// 	TEXT("r.PlayGoNext"),
+// 	TEXT("Tell PlayGo to start downloading the next chunk."),
+// 	FConsoleCommandDelegate::CreateStatic(PlayGoNext)
+// 	);
+// #endif
 
-FAutoConsoleCommand CmdPlayGoNext(
-	TEXT("r.PlayGoNext"),
-	TEXT("Tell PlayGo to start downloading the next chunk."),
-	FConsoleCommandDelegate::CreateStatic(PlayGoNext)
-	);
 #endif
-
-#endif
-#include "ShooterGameState.h"
+#include "Online/ShooterGameState.h"
 
 
 // respond to requests from a companion app

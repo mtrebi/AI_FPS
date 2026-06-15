@@ -1,13 +1,13 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterFriends.h"
+#include "ShooterGame.h"
 #include "ShooterTypes.h"
 #include "ShooterStyle.h"
 #include "ShooterOptionsWidgetStyle.h"
 #include "Player/ShooterPersistentUser.h"
 #include "ShooterGameUserSettings.h"
-#include "ShooterLocalPlayer.h"
+#include "Player/ShooterLocalPlayer.h"
 
 #define LOCTEXT_NAMESPACE "ShooterGame.HUD.Menu"
 
@@ -92,7 +92,7 @@ void FShooterFriends::UpdateFriends(int32 NewOwnerIndex)
 	}
 
 	LocalUserNum = NewOwnerIndex;
-	OnlineFriendsPtr->ReadFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers), FOnReadFriendsListComplete::CreateSP(this, &FShooterFriends::OnFriendsUpdated));
+	//OnlineFriendsPtr->ReadFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers), FOnReadFriendsListComplete::CreateSP(this, &FShooterFriends::OnFriendsUpdated));
 }
 
 void FShooterFriends::OnFriendsUpdated(int32 /*unused*/, bool bWasSuccessful, const FString& FriendListName, const FString& ErrorString)
@@ -119,7 +119,7 @@ void FShooterFriends::OnFriendsUpdated(int32 /*unused*/, bool bWasSuccessful, co
 		MaxFriendIndex = Friends.Num() - 1;
 	}
 
-	MenuHelper::AddMenuItemSP(FriendsItem, LOCTEXT("Close", "CLOSE"), this, &FShooterFriends::OnApplySettings);
+	//MenuHelper::AddMenuItemSP(FriendsItem, LOCTEXT("Close", "CLOSE"), this, &FShooterFriends::OnApplySettings);
 }
 
 void FShooterFriends::IncrementFriendsCounter()

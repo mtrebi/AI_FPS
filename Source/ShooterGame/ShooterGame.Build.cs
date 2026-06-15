@@ -29,6 +29,7 @@ public class ShooterGame : ModuleRules
 				"NavigationSystem",
 				"AIModule",
 				"GameplayTasks",
+				"GameplayCameras",
 				"Navmesh",
                 
             }
@@ -43,7 +44,10 @@ public class ShooterGame : ModuleRules
 				"Json",
 				"ApplicationCore",
 				"ReplicationGraph",
-				"PakFile"
+				"PakFile",
+				"PhysicsCore",
+				"NetCore",
+				"AssetRegistry",
 			}
 		);
 
@@ -67,6 +71,9 @@ public class ShooterGame : ModuleRules
         {
             PrivateDependencyModuleNames.Add("GameplayDebugger");
             PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=1");
+            PublicDefinitions.Add("PLATFORM_PS4=!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR");
+            PublicDefinitions.Add("PLATFORM_XBOXONE=!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR");
+            PublicDefinitions.Add("SHOOTER_CONSOLE_UI=!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR");
         }
 		else
 		{

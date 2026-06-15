@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Others/AttackPositions.h"
 #include "ShooterGame.h"
-#include "Public/Others/AttackPositions.h"
 
 
 // Sets default values

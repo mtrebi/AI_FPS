@@ -1,13 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/MaxSpreadSearchPositionsTest.h"
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
 #include "EnvironmentQuery/Tests/EnvQueryTest_Trace.h"
 #include "Bots/ShooterAIController.h"
 #include "Bots/ShooterBot.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/MaxSpreadSearchPositionsTest.h"
+#include "Others/HelperMethods.h"
 
 
 

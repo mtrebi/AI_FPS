@@ -62,7 +62,7 @@ public:
 
 	TMap<FName, FActorRepListRefView> AlwaysRelevantStreamingLevelActors;
 
-	void OnCharacterEquipWeapon(AShooterCharacter* Character, AShooterWeapon* NewWeapon);
+	void OnCharacterEquipWeapon(AShooterCharacter* ShootChar, AShooterWeapon* NewWeapon);
 	void OnCharacterUnEquipWeapon(AShooterCharacter* Character, AShooterWeapon* OldWeapon);
 
 #if WITH_GAMEPLAY_DEBUGGER

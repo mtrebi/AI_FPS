@@ -76,8 +76,8 @@
 *	
 */
 
-#include "ShooterGame.h"
 #include "ShooterReplicationGraph.h"
+#include "ShooterGame.h"
 
 #include "Net/UnrealNetwork.h"
 #include "Engine/LevelStreaming.h"
@@ -136,8 +136,8 @@ void InitClassReplicationInfo(FClassReplicationInfo& Info, UClass* Class, bool b
 	AActor* CDO = Class->GetDefaultObject<AActor>();
 	if (bSpatialize)
 	{
-		Info.CullDistanceSquared = CDO->NetCullDistanceSquared;
-		UE_LOG(LogShooterReplicationGraph, Log, TEXT("Setting cull distance for %s to %f (%f)"), *Class->GetName(), Info.CullDistanceSquared, FMath::Sqrt(Info.CullDistanceSquared));
+		Info.SetCullDistanceSquared(CDO->NetCullDistanceSquared);
+		//UE_LOG(LogShooterReplicationGraph, Log, TEXT("Setting cull distance for %s to %f (%f)"), *Class->GetName(), Info.CullDistanceSquared, FMath::Sqrt(Info.CullDistanceSquared));
 	}
 
 	Info.ReplicationPeriodFrame = FMath::Max<uint32>( (uint32)FMath::RoundToFloat(ServerMaxTickRate / CDO->NetUpdateFrequency), 1);
@@ -281,7 +281,7 @@ void UShooterReplicationGraph::InitGlobalActorClassSettings()
 	PawnClassRepInfo.DistancePriorityScale = 1.f;
 	PawnClassRepInfo.StarvationPriorityScale = 1.f;
 	PawnClassRepInfo.ActorChannelFrameTimeout = 4;
-	PawnClassRepInfo.CullDistanceSquared = 15000.f * 15000.f; // Yuck
+	PawnClassRepInfo.SetCullDistanceSquared(15000.f * 15000.f); // Yuck
 	SetClassInfo( APawn::StaticClass(), PawnClassRepInfo );
 
 	FClassReplicationInfo PlayerStateRepInfo;
@@ -359,10 +359,10 @@ void UShooterReplicationGraph::InitGlobalActorClassSettings()
 void UShooterReplicationGraph::InitGlobalGraphNodes()
 {
 	// Preallocate some replication lists.
-	PreAllocateRepList(3, 12);
-	PreAllocateRepList(6, 12);
-	PreAllocateRepList(128, 64);
-	PreAllocateRepList(512, 16);
+	//PreAllocateRepList(3, 12);
+	//PreAllocateRepList(6, 12);
+	//PreAllocateRepList(128, 64);
+	//PreAllocateRepList(512, 16);
 
 	// -----------------------------------------------
 	//	Spatial Actors
@@ -374,7 +374,7 @@ void UShooterReplicationGraph::InitGlobalGraphNodes()
 
 	if (CVar_ShooterRepGraph_DisableSpatialRebuilds)
 	{
-		GridNode->AddSpatialRebuildBlacklistClass(AActor::StaticClass()); // Disable All spatial rebuilding
+		//GridNode->AddSpatialRebuildBlacklistClass(AActor::StaticClass()); // Disable All spatial rebuilding
 	}
 	
 	AddGlobalGraphNode(GridNode);
@@ -431,7 +431,7 @@ void UShooterReplicationGraph::RouteAddNetworkActorToNodes(const FNewReplicatedA
 			else
 			{
 				FActorRepListRefView& RepList = AlwaysRelevantStreamingLevelActors.FindOrAdd(ActorInfo.StreamingLevelName);
-				RepList.PrepareForWrite();
+				//RepList.PrepareForWrite();
 				RepList.ConditionalAdd(ActorInfo.Actor);
 			}
 			break;
@@ -476,10 +476,10 @@ void UShooterReplicationGraph::RouteRemoveNetworkActorToNodes(const FNewReplicat
 			else
 			{
 				FActorRepListRefView& RepList = AlwaysRelevantStreamingLevelActors.FindChecked(ActorInfo.StreamingLevelName);
-				if (RepList.Remove(ActorInfo.Actor) == false)
-				{
-					UE_LOG(LogShooterReplicationGraph, Warning, TEXT("Actor %s was not found in AlwaysRelevantStreamingLevelActors list. LevelName: %s"), *GetActorRepListTypeDebugString(ActorInfo.Actor), *ActorInfo.StreamingLevelName.ToString());
-				}				
+				// if (RepList.Remove(ActorInfo.Actor) == false)
+				// {
+				// 	UE_LOG(LogShooterReplicationGraph, Warning, TEXT("Actor %s was not found in AlwaysRelevantStreamingLevelActors list. LevelName: %s"), *GetActorRepListTypeDebugString(ActorInfo.Actor), *ActorInfo.StreamingLevelName.ToString());
+				// }				
 			}
 			break;
 		}
@@ -511,20 +511,20 @@ void UShooterReplicationGraph::RouteRemoveNetworkActorToNodes(const FNewReplicat
 #define CHECK_WORLDS(X)
 #endif
 
-void UShooterReplicationGraph::OnCharacterEquipWeapon(AShooterCharacter* Character, AShooterWeapon* NewWeapon)
+void UShooterReplicationGraph::OnCharacterEquipWeapon(AShooterCharacter* ShootChar, AShooterWeapon* NewWeapon)
 {
-	if (Character && NewWeapon)
-	{
-		CHECK_WORLDS(Character);
-
-		FGlobalActorReplicationInfo& ActorInfo = GlobalActorReplicationInfoMap.Get(Character);
-		ActorInfo.DependentActorList.PrepareForWrite();
-
-		if (!ActorInfo.DependentActorList.Contains(NewWeapon))
-		{
-			ActorInfo.DependentActorList.Add(NewWeapon);
-		}
-	}
+	// if (ShootChar && NewWeapon)
+	// {
+	// 	CHECK_WORLDS(ShootChar);
+	//
+	// 	FGlobalActorReplicationInfo& ActorInfo = GlobalActorReplicationInfoMap.Get(ShootChar);
+	// 	//ActorInfo.DependentActorList.PrepareForWrite();
+	//
+	// 	//if (!ActorInfo.DependentActorList.Contains(NewWeapon))
+	// 	{
+	// 		//ActorInfo.DependentActorList.Add(NewWeapon);
+	// 	//}
+	// }
 }
 
 void UShooterReplicationGraph::OnCharacterUnEquipWeapon(AShooterCharacter* Character, AShooterWeapon* OldWeapon)
@@ -534,9 +534,9 @@ void UShooterReplicationGraph::OnCharacterUnEquipWeapon(AShooterCharacter* Chara
 		CHECK_WORLDS(Character);
 
 		FGlobalActorReplicationInfo& ActorInfo = GlobalActorReplicationInfoMap.Get(Character);
-		ActorInfo.DependentActorList.PrepareForWrite();
+		//ActorInfo.DependentActorList.PrepareForWrite();
 
-		ActorInfo.DependentActorList.Remove(OldWeapon);
+		//ActorInfo.DependentActorList.Remove(OldWeapon);
 	}
 }
 
@@ -593,66 +593,66 @@ void UShooterReplicationGraphNode_AlwaysRelevant_ForConnection::GatherActorLists
 
 	ReplicationActorList.Reset();
 
-	ReplicationActorList.ConditionalAdd(Params.Viewer.InViewer);
-	ReplicationActorList.ConditionalAdd(Params.Viewer.ViewTarget);
+	//ReplicationActorList.ConditionalAdd(Params.Viewer.InViewer);
+	//ReplicationActorList.ConditionalAdd(Params.Viewer.ViewTarget);
 	
-	if (AShooterPlayerController* PC = Cast<AShooterPlayerController>(Params.Viewer.InViewer))
-	{
-		// 50% throttling of PlayerStates.
-		const bool bReplicatePS = (Params.ConnectionManager.ConnectionId % 2) == (Params.ReplicationFrameNum % 2);
-		if (bReplicatePS)
-		{
-			// Always return the player state to the owning player. Simulated proxy player states are handled by UShooterReplicationGraphNode_PlayerStateFrequencyLimiter
-			if (APlayerState* PS = PC->PlayerState)
-			{
-				if (!bInitializedPlayerState)
-				{
-					bInitializedPlayerState = true;
-					FConnectionReplicationActorInfo& ConnectionActorInfo = Params.ConnectionManager.ActorInfoMap.FindOrAdd( PS );
-					ConnectionActorInfo.ReplicationPeriodFrame = 1;
-				}
-
-				ReplicationActorList.ConditionalAdd(PS);
-			}
-		}
-
-		if (AShooterCharacter* Pawn = Cast<AShooterCharacter>(PC->GetPawn()))
-		{
-			if (Pawn != LastPawn)
-			{
-				UE_LOG(LogShooterReplicationGraph, Verbose, TEXT("Setting connection pawn cull distance to 0. %s"), *Pawn->GetName());
-				LastPawn = Pawn;
-				FConnectionReplicationActorInfo& ConnectionActorInfo = Params.ConnectionManager.ActorInfoMap.FindOrAdd( Pawn );
-				ConnectionActorInfo.CullDistanceSquared = 0.f;
-			}
-
-			if (Pawn != Params.Viewer.ViewTarget)
-			{
-				ReplicationActorList.ConditionalAdd(Pawn);
-			}
-
-			int32 InventoryCount = Pawn->GetInventoryCount();
-			for (int32 i = 0; i < InventoryCount; ++i)
-			{
-				AShooterWeapon* Weapon = Pawn->GetInventoryWeapon(i);
-				if (Weapon)
-				{
-					ReplicationActorList.ConditionalAdd(Weapon);
-				}
-			}
-		}
-
-		if (Params.Viewer.ViewTarget != LastPawn)
-		{
-			if (AShooterCharacter* ViewTargetPawn = Cast<AShooterCharacter>(Params.Viewer.ViewTarget))
-			{
-				UE_LOG(LogShooterReplicationGraph, Verbose, TEXT("Setting connection view target pawn cull distance to 0. %s"), *ViewTargetPawn->GetName());
-				LastPawn = ViewTargetPawn;
-				FConnectionReplicationActorInfo& ConnectionActorInfo = Params.ConnectionManager.ActorInfoMap.FindOrAdd(ViewTargetPawn);
-				ConnectionActorInfo.CullDistanceSquared = 0.f;
-			}
-		}
-	}
+	// if (AShooterPlayerController* PC = Cast<AShooterPlayerController>(Params.Viewer.InViewer))
+	// {
+	// 	// 50% throttling of PlayerStates.
+	// 	const bool bReplicatePS = (Params.ConnectionManager.ConnectionId % 2) == (Params.ReplicationFrameNum % 2);
+	// 	if (bReplicatePS)
+	// 	{
+	// 		// Always return the player state to the owning player. Simulated proxy player states are handled by UShooterReplicationGraphNode_PlayerStateFrequencyLimiter
+	// 		if (APlayerState* PS = PC->PlayerState)
+	// 		{
+	// 			if (!bInitializedPlayerState)
+	// 			{
+	// 				bInitializedPlayerState = true;
+	// 				FConnectionReplicationActorInfo& ConnectionActorInfo = Params.ConnectionManager.ActorInfoMap.FindOrAdd( PS );
+	// 				ConnectionActorInfo.ReplicationPeriodFrame = 1;
+	// 			}
+	//
+	// 			ReplicationActorList.ConditionalAdd(PS);
+	// 		}
+	// 	}
+	//
+	// 	if (AShooterCharacter* Pawn = Cast<AShooterCharacter>(PC->GetPawn()))
+	// 	{
+	// 		if (Pawn != LastPawn)
+	// 		{
+	// 			UE_LOG(LogShooterReplicationGraph, Verbose, TEXT("Setting connection pawn cull distance to 0. %s"), *Pawn->GetName());
+	// 			LastPawn = Pawn;
+	// 			FConnectionReplicationActorInfo& ConnectionActorInfo = Params.ConnectionManager.ActorInfoMap.FindOrAdd( Pawn );
+	// 			ConnectionActorInfo.CullDistanceSquared = 0.f;
+	// 		}
+	//
+	// 		if (Pawn != Params.Viewer.ViewTarget)
+	// 		{
+	// 			ReplicationActorList.ConditionalAdd(Pawn);
+	// 		}
+	//
+	// 		int32 InventoryCount = Pawn->GetInventoryCount();
+	// 		for (int32 i = 0; i < InventoryCount; ++i)
+	// 		{
+	// 			AShooterWeapon* Weapon = Pawn->GetInventoryWeapon(i);
+	// 			if (Weapon)
+	// 			{
+	// 				ReplicationActorList.ConditionalAdd(Weapon);
+	// 			}
+	// 		}
+	// 	}
+	//
+	// 	if (Params.Viewer.ViewTarget != LastPawn)
+	// 	{
+	// 		if (AShooterCharacter* ViewTargetPawn = Cast<AShooterCharacter>(Params.Viewer.ViewTarget))
+	// 		{
+	// 			UE_LOG(LogShooterReplicationGraph, Verbose, TEXT("Setting connection view target pawn cull distance to 0. %s"), *ViewTargetPawn->GetName());
+	// 			LastPawn = ViewTargetPawn;
+	// 			FConnectionReplicationActorInfo& ConnectionActorInfo = Params.ConnectionManager.ActorInfoMap.FindOrAdd(ViewTargetPawn);
+	// 			ConnectionActorInfo.CullDistanceSquared = 0.f;
+	// 		}
+	// 	}
+	// }
 
 	Params.OutGatheredReplicationLists.AddReplicationActorList(ReplicationActorList);
 
@@ -761,7 +761,7 @@ void UShooterReplicationGraphNode_PlayerStateFrequencyLimiter::PrepareForReplica
 
 	ReplicationActorLists.AddDefaulted();
 	FActorRepListRefView* CurrentList = &ReplicationActorLists[0];
-	CurrentList->PrepareForWrite();
+	//CurrentList->PrepareForWrite();
 
 	// We rebuild our lists of player states each frame. This is not as efficient as it could be but its the simplest way
 	// to handle players disconnecting and keeping the lists compact. If the lists were persistent we would need to defrag them as players left.
@@ -778,7 +778,7 @@ void UShooterReplicationGraphNode_PlayerStateFrequencyLimiter::PrepareForReplica
 		{
 			ReplicationActorLists.AddDefaulted();
 			CurrentList = &ReplicationActorLists.Last(); 
-			CurrentList->PrepareForWrite();
+			//CurrentList->PrepareForWrite();
 		}
 		
 		CurrentList->Add(PS);

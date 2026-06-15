@@ -5,11 +5,11 @@
 #include "Perception/AISense.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISenseConfig_Hearing.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/Others/AttackPositions.h"
-#include "Public/Others/SearchLocations.h"
-#include "Public/Navigation/MyInfluenceMap.h"
+#include "Navigation/MyRecastNavMesh.h"
+#include "Others/HelperMethods.h"
+#include "Others/AttackPositions.h"
+#include "Others/SearchLocations.h"
+#include "Navigation/MyInfluenceMap.h"
 #include "ShooterAIController.generated.h"
 
 class UBehaviorTreeComponent;

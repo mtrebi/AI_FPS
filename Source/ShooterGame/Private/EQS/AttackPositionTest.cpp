@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/AttackPositionTest.h"
 #include "ShooterGame.h"
-#include "Public/Bots/ShooterBot.h"
+#include "Bots/ShooterBot.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/Bots/ShooterAIController.h"
-#include "Public/EQS/CoverBaseClass.h"
-#include "Public/EQS/AttackPositionTest.h"
+#include "Bots/ShooterAIController.h"
+#include "EQS/CoverBaseClass.h"
+#include "EQS/AttackPositionTest.h"
 
 
 UAttackPositionTest::UAttackPositionTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -96,7 +97,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 
 		// Check visibility to player
 		const bool BlockingHitFound = World->LineTraceSingleByChannel(OutHit, Location, ContextLocations[0], ECollisionChannel::ECC_Visibility, CollisionParams);
-		if (BlockingHitFound && OutHit.Actor->GetClass() == AShooterCharacter::StaticClass()) {
+		if (BlockingHitFound && OutHit.GetActor()->GetClass() == AShooterCharacter::StaticClass()) {
 			// There is visibility. Lets check distance to nearest cover!
 			float CurrentDistance;
 			float MinDistance = 100000;

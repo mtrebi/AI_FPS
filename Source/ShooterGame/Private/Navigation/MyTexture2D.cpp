@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Navigation/MyTexture2D.h"
 #include "ShooterGame.h"
-#include "Public/Navigation/MyTexture2D.h"
 
 
 //----------------------------------------------------------------------//
@@ -13,12 +13,12 @@ MyTexture2D::MyTexture2D(const FString TexturePath) {
 
 	Texture = Cast<UTexture2D>(StaticLoadObject(UTexture2D::StaticClass(), NULL, *(TexturePath)));
 
-	FColor* FormatedImageData = static_cast<FColor*>(Texture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
+	FColor* FormatedImageData = static_cast<FColor*>(Texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
 
-	TextureWidth = Texture->PlatformData->Mips[0].SizeX,
-		TextureHeight = Texture->PlatformData->Mips[0].SizeY;
+	TextureWidth = Texture->GetPlatformData()->Mips[0].SizeX,
+		TextureHeight = Texture->GetPlatformData()->Mips[0].SizeY;
 
-	Texture->PlatformData->Mips[0].BulkData.Unlock();
+	Texture->GetPlatformData()->Mips[0].BulkData.Unlock();
 	//this->PostProcess();
 
 }
@@ -47,7 +47,7 @@ void MyTexture2D::PostProcess() {
 }
 
 void MyTexture2D::SetColorOfPixel(const uint16 X, const uint16 Y, const FColor PixelColor, const bool Update) const {
-	FColor* FormatedImageData = static_cast<FColor*>(Texture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
+	FColor* FormatedImageData = static_cast<FColor*>(Texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
 
 	if (X >= 0 && X < TextureWidth && Y >= 0 && Y < TextureHeight)
 	{
@@ -56,7 +56,7 @@ void MyTexture2D::SetColorOfPixel(const uint16 X, const uint16 Y, const FColor P
 	else {
 		FormatedImageData[X] = PixelColor;
 	}
-	Texture->PlatformData->Mips[0].BulkData.Unlock();
+	Texture->GetPlatformData()->Mips[0].BulkData.Unlock();
 
 	if (Update) Texture->UpdateResource();
 }
@@ -66,7 +66,7 @@ FColor MyTexture2D::GetColorOfPixel(const uint16 X, const uint16 Y) {
 	// https://answers.unrealengine.com/questions/25594/accessing-pixel-values-of-texture2d.html
 
 	FColor PixelColor;
-	FColor* FormatedImageData = static_cast<FColor*>(Texture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
+	FColor* FormatedImageData = static_cast<FColor*>(Texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
 
 	if (X >= 0 && X < TextureWidth && Y >= 0 && Y < TextureHeight)
 	{
@@ -77,7 +77,7 @@ FColor MyTexture2D::GetColorOfPixel(const uint16 X, const uint16 Y) {
 		PixelColor = FormatedImageData[X];
 	}
 
-	Texture->PlatformData->Mips[0].BulkData.Unlock();
+	Texture->GetPlatformData()->Mips[0].BulkData.Unlock();
 
 	return PixelColor;
 }

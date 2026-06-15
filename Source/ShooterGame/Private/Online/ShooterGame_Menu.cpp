@@ -1,12 +1,12 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "Online/ShooterGame_Menu.h"
 #include "ShooterGame.h"
-#include "ShooterGame_Menu.h"
 #include "ShooterMainMenu.h"
 #include "ShooterWelcomeMenu.h"
 #include "ShooterMessageMenu.h"
-#include "ShooterPlayerController_Menu.h"
 #include "Online/ShooterGameSession.h"
+#include "Player/ShooterPlayerController_Menu.h"
 
 AShooterGame_Menu::AShooterGame_Menu(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {

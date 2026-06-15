@@ -1,15 +1,16 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "SShooterLeaderboard.h"
+#include "ShooterGame.h"
+#include "OnlineStats.h"
 #include "ShooterStyle.h"
 #include "ShooterUIHelpers.h"
 
-#if PLATFORM_XBOXONE
-#define INTERACTIVE_LEADERBOARD	1
-#else
-#define INTERACTIVE_LEADERBOARD	0
-#endif
+// #if PLATFORM_XBOXONE
+// #define INTERACTIVE_LEADERBOARD	1
+// #else
+// #define INTERACTIVE_LEADERBOARD	0
+// #endif
 
 FLeaderboardRow::FLeaderboardRow(const FOnlineStatsRow& Row)
 	: Rank(FString::FromInt(Row.Rank))
@@ -179,13 +180,13 @@ void SShooterLeaderboard::EntrySelectionChanged(TSharedPtr<FLeaderboardRow> InIt
 
 bool SShooterLeaderboard::IsPlayerSelectedAndValid() const
 {
-#if INTERACTIVE_LEADERBOARD
-	if (SelectedItem.IsValid())
-	{
-		check(SelectedItem->PlayerId.IsValid());
-		return true;
-	}
-#endif
+// #if INTERACTIVE_LEADERBOARD
+// 	if (SelectedItem.IsValid())
+// 	{
+// 		check(SelectedItem->PlayerId.IsValid());
+// 		return true;
+// 	}
+// #endif
 	return false;
 }
 

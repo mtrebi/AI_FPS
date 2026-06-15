@@ -1,8 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Navigation/MyNavigationQueryFilter.h"
 #include "ShooterGame.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/Navigation/MyNavigationQueryFilter.h"
+#include "Navigation/MyRecastNavMesh.h"
+#include "Others/HelperMethods.h"
 
 UMyNavigationQueryFilter::UMyNavigationQueryFilter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {

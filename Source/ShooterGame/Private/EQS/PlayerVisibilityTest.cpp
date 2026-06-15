@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/PlayerVisibilityTest.h"
+
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/EQS/CoverBaseClass.h"
-#include "Public/Bots/ShooterBot.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/PlayerVisibilityTest.h"
+#include "EQS/CoverBaseClass.h"
+#include "Bots/ShooterBot.h"
+#include "Others/HelperMethods.h"
 
 UPlayerVisibilityTest::UPlayerVisibilityTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {

@@ -9,8 +9,8 @@
 #include "ShooterOptionsWidgetStyle.h"
 #include "ShooterScoreboardWidgetStyle.h"
 #include "ShooterChatWidgetStyle.h"
-#include "AssetRegistryModule.h"
-#include "IAssetRegistry.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/IAssetRegistry.h"
 
 
 

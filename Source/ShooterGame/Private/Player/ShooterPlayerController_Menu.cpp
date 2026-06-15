@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Player/ShooterPlayerController_Menu.h"
+#include "ShooterGame.h"
 #include "ShooterStyle.h"
 
 

@@ -1,19 +1,20 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterUIHelpers.h"
+#include "ShooterGame.h"
 
 FText ShooterUIHelpers::GetProfileOpenText() const
 {
 	// @todo: replace button with icon
 	// @todo: replace 'GamerCard' with distribution specific terminology (Steam, Origin, UPlay, etc)
-#if PLATFORM_XBOXONE
-	return NSLOCTEXT("Network", "XB1OpenProfile", "Press A for GamerCard");
-#elif PLATFORM_PS4
+// #if PLATFORM_XBOXONE
+// 	return NSLOCTEXT("Network", "XB1OpenProfile", "Press A for GamerCard");
+// #elif PLATFORM_PS4
+// 	return NSLOCTEXT("Network", "PS4OpenProfile", "Press cross button for GamerCard");
+// #else
+// 	return NSLOCTEXT("Network", "PCOpenProfile", "Press Enter for GamerCard");
+// #endif
 	return NSLOCTEXT("Network", "PS4OpenProfile", "Press cross button for GamerCard");
-#else
-	return NSLOCTEXT("Network", "PCOpenProfile", "Press Enter for GamerCard");
-#endif
 }
 
 bool ShooterUIHelpers::ProfileOpenedUI(const FUniqueNetId& Requestor, const FUniqueNetId& Requestee, const FOnProfileUIClosedDelegate* Delegate) const

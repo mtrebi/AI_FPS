@@ -1,8 +1,8 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "SShooterSplitScreenLobbyWidget.h"
 #include "ShooterGame.h"
 #include "ShooterStyle.h"
-#include "SShooterSplitScreenLobbyWidget.h"
 #include "ShooterMenuItemWidgetStyle.h"
 #include "ShooterMenuWidgetStyle.h"
 #include "SShooterConfirmationDialog.h"
@@ -22,22 +22,22 @@ static FAutoConsoleVariableRef CVarShooterSplitScreenMax(
 
 void SShooterSplitScreenLobby::Construct( const FArguments& InArgs )
 {
-#if PLATFORM_PS4
-	PressToPlayText = LOCTEXT("PressToPlay", "Press cross button to Play");
-	PressToFindText = LOCTEXT("PressToFind", "Press cross button to Find Match");
-	PressToStartMatchText = LOCTEXT("PressToStart", "Press cross button To Start Match");
-#else
-	PressToPlayText = LOCTEXT("PressToPlay", "Press A to Play");
-	PressToFindText = LOCTEXT("PressToFind", "Press A to Find Match");
-	PressToStartMatchText = LOCTEXT("PressToStart", "Press A To Start Match");	
-#endif
+// #if PLATFORM_PS4
+// 	PressToPlayText = LOCTEXT("PressToPlay", "Press cross button to Play");
+// 	PressToFindText = LOCTEXT("PressToFind", "Press cross button to Find Match");
+// 	PressToStartMatchText = LOCTEXT("PressToStart", "Press cross button To Start Match");
+// #else
+// 	PressToPlayText = LOCTEXT("PressToPlay", "Press A to Play");
+// 	PressToFindText = LOCTEXT("PressToFind", "Press A to Find Match");
+// 	PressToStartMatchText = LOCTEXT("PressToStart", "Press A To Start Match");	
+// #endif
 
-#if PLATFORM_SWITCH
-	PressToPlayText = LOCTEXT("PressToPlay", "<img src=\"ShooterGame.Switch.Right\"/> Select User");
-	PressToFindText = LOCTEXT("PressToFind", "Press <img src=\"ShooterGame.Switch.Right\"/> to Find Match");
-	PressToStartMatchText = LOCTEXT("PressToStart", "<img src=\"ShooterGame.Switch.Right\"/> Start Match / <img src=\"ShooterGame.Switch.Up\"/> Connect Controllers");
-	PlayAsGuestText = LOCTEXT("PlayAsGuest", "<img src=\"ShooterGame.Switch.Left\"/> Play As Guest");
-#endif	
+// #if PLATFORM_SWITCH
+// 	PressToPlayText = LOCTEXT("PressToPlay", "<img src=\"ShooterGame.Switch.Right\"/> Select User");
+// 	PressToFindText = LOCTEXT("PressToFind", "Press <img src=\"ShooterGame.Switch.Right\"/> to Find Match");
+// 	PressToStartMatchText = LOCTEXT("PressToStart", "<img src=\"ShooterGame.Switch.Right\"/> Start Match / <img src=\"ShooterGame.Switch.Up\"/> Connect Controllers");
+// 	PlayAsGuestText = LOCTEXT("PlayAsGuest", "<img src=\"ShooterGame.Switch.Left\"/> Play As Guest");
+// #endif	
 
 	PlayerOwner = InArgs._PlayerOwner;
 
@@ -330,7 +330,7 @@ void SShooterSplitScreenLobby::ConditionallyReadyPlayer( const int ControllerId,
 
 		if ( bCanShowUI && ExternalUI.IsValid() )
 		{
-			ExternalUI->ShowLoginUI( ControllerId, OnlineMode == EOnlineMode::Online, false, FOnLoginUIClosedDelegate::CreateSP( this, &SShooterSplitScreenLobby::HandleLoginUIClosedAndReady ) );
+			//ExternalUI->ShowLoginUI( ControllerId, OnlineMode == EOnlineMode::Online, false, FOnLoginUIClosedDelegate::CreateSP( this, &SShooterSplitScreenLobby::HandleLoginUIClosedAndReady ) );
 		}
 
 		return;
@@ -345,10 +345,10 @@ void SShooterSplitScreenLobby::ConditionallyReadyPlayer( const int ControllerId,
 			if(Identity.IsValid())
 			{
 				PendingControllerId = ControllerId;
-				Identity->GetUserPrivilege(
-					*UniqueNetId,
-					OnlineMode != EOnlineMode::Offline ? EUserPrivileges::CanPlayOnline : EUserPrivileges::CanPlay,
-					IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &SShooterSplitScreenLobby::OnUserCanPlay));
+				// Identity->GetUserPrivilege(
+				// 	*UniqueNetId,
+				// 	OnlineMode != EOnlineMode::Offline ? EUserPrivileges::CanPlayOnline : EUserPrivileges::CanPlay,
+				// 	IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &SShooterSplitScreenLobby::OnUserCanPlay));
 			}
 		}
 	}
@@ -440,33 +440,33 @@ void SShooterSplitScreenLobby::OnUserCanPlay(const FUniqueNetId& UserId, EUserPr
 	if (PrivilegeResults != (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures)
 	{
 		// Xbox shows its own system dialog currently
-#if PLATFORM_PS4
-		const auto OnlineSub = IOnlineSubsystem::Get();
-		if (OnlineSub)
-		{
-			const auto Identity = OnlineSub->GetIdentityInterface();
-			if (Identity.IsValid())
-			{
-				FString Nickname = Identity->GetPlayerNickname(UserId);
-
-				// Show warning that the user cannot play due to age restrictions
-				UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameInstance()->GetGameViewportClient());
-
-				if (ShooterViewport != NULL)
-				{
-					ShooterViewport->ShowDialog(
-						PlayerOwner.Get(),
-						EShooterDialogType::Generic,
-						FText::Format(NSLOCTEXT("ProfileMessages", "AgeRestrictionFmt", "{0} cannot play due to age restrictions!"), FText::FromString(Nickname)),
-						NSLOCTEXT("DialogButtons", "OKAY", "OK"),
-						FText::GetEmpty(),
-						FOnClicked::CreateRaw(this, &SShooterSplitScreenLobby::OnOkOrCancel),
-						FOnClicked::CreateRaw(this, &SShooterSplitScreenLobby::OnOkOrCancel)
-						);
-				}
-			}
-		}
-#endif
+// #if PLATFORM_PS4
+// 		const auto OnlineSub = IOnlineSubsystem::Get();
+// 		if (OnlineSub)
+// 		{
+// 			const auto Identity = OnlineSub->GetIdentityInterface();
+// 			if (Identity.IsValid())
+// 			{
+// 				FString Nickname = Identity->GetPlayerNickname(UserId);
+//
+// 				// Show warning that the user cannot play due to age restrictions
+// 				UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameInstance()->GetGameViewportClient());
+//
+// 				if (ShooterViewport != NULL)
+// 				{
+// 					ShooterViewport->ShowDialog(
+// 						PlayerOwner.Get(),
+// 						EShooterDialogType::Generic,
+// 						FText::Format(NSLOCTEXT("ProfileMessages", "AgeRestrictionFmt", "{0} cannot play due to age restrictions!"), FText::FromString(Nickname)),
+// 						NSLOCTEXT("DialogButtons", "OKAY", "OK"),
+// 						FText::GetEmpty(),
+// 						FOnClicked::CreateRaw(this, &SShooterSplitScreenLobby::OnOkOrCancel),
+// 						FOnClicked::CreateRaw(this, &SShooterSplitScreenLobby::OnOkOrCancel)
+// 						);
+// 				}
+// 			}
+// 		}
+// #endif
 	}
 	else
 	{

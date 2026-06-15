@@ -1,10 +1,10 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "SShooterDemoHUD.h"
+#include "ShooterGame.h"
 #include "Engine/DemoNetDriver.h"
 #include "ShooterStyle.h"
-#include "CoreStyle.h"
+#include "Styling/CoreStyle.h"
 
 /** Widget to represent the main replay timeline bar */
 class SShooterReplayTimeline : public SCompoundWidget
@@ -80,7 +80,7 @@ int32 SShooterReplayTimeline::OnPaint(const FPaintArgs& Args, const FGeometry& A
 		const FLinearColor FinalColorAndOpacity( InWidgetStyle.GetColorAndOpacityTint() * ColorAndOpacity.Get() * ImageBrush->GetTint( InWidgetStyle ) );
 
 		// Adjust clipping rect to replay time
-		const float ReplayPercent = DemoDriver->DemoCurrentTime / DemoDriver->DemoTotalTime;
+		const float ReplayPercent = DemoDriver->GetDemoCurrentTime() / DemoDriver->GetDemoTotalTime();
 
 		const FVector2D Center(
 			AllottedGeometry.GetLocalSize().X * ReplayPercent,
@@ -114,7 +114,7 @@ FReply SShooterReplayTimeline::OnTimelineClicked(const FGeometry& Geometry, cons
 
 		const float TimelinePercentage = LocalPos.X / Geometry.GetLocalSize().X;
 
-		DemoDriver->GotoTimeInSeconds( TimelinePercentage * DemoDriver->DemoTotalTime );
+		DemoDriver->GotoTimeInSeconds( TimelinePercentage * DemoDriver->GetDemoTotalTime() );
 
 		return FReply::Handled();
 	}
@@ -154,7 +154,7 @@ void SShooterDemoHUD::Construct(const FArguments& InArgs)
 				+SOverlay::Slot()
 				[
 					SNew(SShooterReplayTimeline)
-					.DemoDriver(PlayerOwner->GetWorld()->DemoNetDriver)
+					.DemoDriver(PlayerOwner->GetWorld()->GetDemoNetDriver())
 					.BackgroundBrush(FShooterStyle::Get().GetBrush("ShooterGame.ReplayTimelineBorder"))
 					.BackgroundPadding(FMargin(0.0f, 3.0))
 					.IndicatorBrush(FShooterStyle::Get().GetBrush("ShooterGame.ReplayTimelineIndicator"))
@@ -214,14 +214,14 @@ FText SShooterDemoHUD::GetCurrentReplayTime() const
 		return FText::GetEmpty();
 	}
 
-	auto DemoDriver = PlayerOwner->GetWorld()->DemoNetDriver;
+	auto DemoDriver = PlayerOwner->GetWorld()->GetDemoNetDriver();
 
 	if (DemoDriver == nullptr)
 	{
 		return FText::GetEmpty();
 	}
 
-	return FText::AsTimespan(FTimespan::FromSeconds(DemoDriver->DemoCurrentTime));
+	return FText::AsTimespan(FTimespan::FromSeconds(DemoDriver->GetDemoCurrentTime()));
 }
 
 FText SShooterDemoHUD::GetTotalReplayTime() const
@@ -231,14 +231,14 @@ FText SShooterDemoHUD::GetTotalReplayTime() const
 		return FText::GetEmpty();
 	}
 
-	auto DemoDriver = PlayerOwner->GetWorld()->DemoNetDriver;
+	auto DemoDriver = PlayerOwner->GetWorld()->GetDemoNetDriver();
 
 	if (DemoDriver == nullptr)
 	{
 		return FText::GetEmpty();
 	}
 
-	return FText::AsTimespan(FTimespan::FromSeconds(DemoDriver->DemoTotalTime));
+	return FText::AsTimespan(FTimespan::FromSeconds(DemoDriver->GetDemoTotalTime()));
 }
 
 FText SShooterDemoHUD::GetPlaybackSpeed() const
@@ -248,7 +248,7 @@ FText SShooterDemoHUD::GetPlaybackSpeed() const
 		return FText::GetEmpty();
 	}
 
-	if (PlayerOwner->GetWorldSettings()->Pauser == nullptr)
+	if (PlayerOwner->GetWorldSettings()->GetPauserPlayerState() == nullptr)
 	{
 		FNumberFormattingOptions FormatOptions = FNumberFormattingOptions()
 			.SetMinimumFractionalDigits(2)
@@ -262,7 +262,7 @@ FText SShooterDemoHUD::GetPlaybackSpeed() const
 
 ECheckBoxState SShooterDemoHUD::IsPauseChecked() const
 {
-	if (PlayerOwner.IsValid() && PlayerOwner->GetWorldSettings() != nullptr && PlayerOwner->GetWorldSettings()->Pauser != nullptr)
+	if (PlayerOwner.IsValid() && PlayerOwner->GetWorldSettings() != nullptr && PlayerOwner->GetWorldSettings()->GetPauserPlayerState() != nullptr)
 	{
 		return ECheckBoxState::Checked;
 	}
@@ -288,13 +288,13 @@ void SShooterDemoHUD::OnPauseCheckStateChanged(ECheckBoxState CheckState) const
 	{
 		case ECheckBoxState::Checked:
 		{
-			WorldSettings->Pauser = PlayerOwner->PlayerState;
+			WorldSettings->SetPauserPlayerState(PlayerOwner->PlayerState);
 			break;
 		}
 
 		case ECheckBoxState::Unchecked:
 		{
-			WorldSettings->Pauser = nullptr;
+			WorldSettings->SetPauserPlayerState(nullptr);
 			break;
 		}
 

@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/MinDotProductChosenPositions.h"
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
 #include "EnvironmentQuery/Tests/EnvQueryTest_Trace.h"
 #include "Bots/ShooterAIController.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/MinDotProductChosenPositions.h"
+#include "Others/HelperMethods.h"
+#include "EQS/MinDotProductChosenPositions.h"
 
 UMinDotProductChosenPositions::UMinDotProductChosenPositions(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {

@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterOnlineGameSettings.h"
+#include "ShooterGame.h"
 
 
 FShooterOnlineSessionSettings::FShooterOnlineSessionSettings(bool bIsLAN, bool bIsPresence, int32 MaxNumPlayers)
@@ -29,13 +29,13 @@ FShooterOnlineSearchSettings::FShooterOnlineSearchSettings(bool bSearchingLAN, b
 
 	if (bSearchingPresence)
 	{
-		QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
+		//QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 	}
 }
 
 FShooterOnlineSearchSettingsEmptyDedicated::FShooterOnlineSearchSettingsEmptyDedicated(bool bSearchingLAN, bool bSearchingPresence) :
 	FShooterOnlineSearchSettings(bSearchingLAN, bSearchingPresence)
 {
-	QuerySettings.Set(SEARCH_DEDICATED_ONLY, true, EOnlineComparisonOp::Equals);
-	QuerySettings.Set(SEARCH_EMPTY_SERVERS_ONLY, true, EOnlineComparisonOp::Equals);
+	//QuerySettings.Set(SEARCH_DEDICATED_ONLY, true, EOnlineComparisonOp::Equals);
+	//QuerySettings.Set(SEARCH_EMPTY_SERVERS_ONLY, true, EOnlineComparisonOp::Equals);
 }

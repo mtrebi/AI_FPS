@@ -9,7 +9,7 @@
 const FIntPoint DefaultShooterResolutions[] = { FIntPoint(1024,768), FIntPoint(1280,720), FIntPoint(1920,1080) };
 
 /** supported resolutions count*/
-const int32 DefaultShooterResCount = ARRAY_COUNT(DefaultShooterResolutions);
+const int32 DefaultShooterResCount = std::size(DefaultShooterResolutions);
 
 /** delegate called when changes are applied */
 DECLARE_DELEGATE(FOnApplyChanges);

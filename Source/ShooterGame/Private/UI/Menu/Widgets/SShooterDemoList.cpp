@@ -1,10 +1,10 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "SShooterDemoList.h"
-#include "SHeaderRow.h"
+#include "ShooterGame.h"
+#include "Widgets/Views/SHeaderRow.h"
 #include "ShooterStyle.h"
-#include "CoreStyle.h"
+#include "Styling/CoreStyle.h"
 #include "ShooterGameLoadingScreen.h"
 #include "ShooterGameInstance.h"
 #include "NetworkReplayStreaming.h"
@@ -185,7 +185,7 @@ void SShooterDemoList::BuildDemoList()
 
 	if ( ReplayStreamer.IsValid() )
 	{
-		ReplayStreamer->EnumerateStreams(EnumerateStreamsVersion, FString(), FString(), FEnumerateStreamsCallback::CreateSP(this, &SShooterDemoList::OnEnumerateStreamsComplete));
+		//ReplayStreamer->EnumerateStreams(EnumerateStreamsVersion, 0, FString(), TArray<FString>{}, FEnumerateStreamsCallback::CreateSP(this, &SShooterDemoList::OnEnumerateStreamsComplete));
 	}
 }
 
@@ -265,7 +265,7 @@ FReply SShooterDemoList::OnDemoDeleteConfirm()
 		bUpdatingDemoList = true;
 		DemoList.Empty();
 
-		ReplayStreamer->DeleteFinishedStream(SelectedItem->StreamInfo.Name, FDeleteFinishedStreamCallback::CreateSP(this, &SShooterDemoList::OnDeleteFinishedStreamComplete));
+		//ReplayStreamer->DeleteFinishedStream(SelectedItem->StreamInfo.Name, FDeleteFinishedStreamCallback::CreateSP(this, &SShooterDemoList::OnDeleteFinishedStreamComplete));
 	}
 
 	UShooterGameInstance* const GI = Cast<UShooterGameInstance>(PlayerOwner->GetGameInstance());

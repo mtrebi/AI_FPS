@@ -4,8 +4,8 @@
 	ShooterGameInstance.cpp
 =============================================================================*/
 
-#include "ShooterGame.h"
 #include "ShooterGameInstance.h"
+#include "ShooterGame.h"
 #include "ShooterMainMenu.h"
 #include "ShooterWelcomeMenu.h"
 #include "ShooterMessageMenu.h"
@@ -17,6 +17,7 @@
 #include "Player/ShooterPlayerController_Menu.h"
 #include "Online/ShooterPlayerState.h"
 #include "Online/ShooterGameSession.h"
+#include "Interfaces/OnlinePresenceInterface.h"
 #include "Online/ShooterOnlineSessionClient.h"
 
 FAutoConsoleVariable CVarShooterGameTestEncryption(TEXT("ShooterGame.TestEncryption"), 0, TEXT("If true, clients will send an encryption token with their request to join the server and attempt to encrypt the connection using a debug key. This is NOT SECURE and for demonstration purposes only."));
@@ -113,7 +114,7 @@ void UShooterGameInstance::Init()
 		IdentityInterface->AddOnLoginStatusChangedDelegate_Handle(i, FOnLoginStatusChangedDelegate::CreateUObject(this, &UShooterGameInstance::HandleUserLoginChanged));
 	}
 
-	IdentityInterface->AddOnControllerPairingChangedDelegate_Handle(FOnControllerPairingChangedDelegate::CreateUObject(this, &UShooterGameInstance::HandleControllerPairingChanged));
+	//IdentityInterface->AddOnControllerPairingChangedDelegate_Handle(FOnControllerPairingChangedDelegate::CreateUObject(this, &UShooterGameInstance::HandleControllerPairingChanged));
 
 	FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(this, &UShooterGameInstance::HandleAppWillDeactivate);
 
@@ -121,7 +122,7 @@ void UShooterGameInstance::Init()
 	FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(this, &UShooterGameInstance::HandleAppResume);
 
 	FCoreDelegates::OnSafeFrameChangedEvent.AddUObject(this, &UShooterGameInstance::HandleSafeFrameChanged);
-	FCoreDelegates::OnControllerConnectionChange.AddUObject(this, &UShooterGameInstance::HandleControllerConnectionChange);
+	//FCoreDelegates::OnControllerConnectionChange.AddUObject(this, &UShooterGameInstance::HandleControllerConnectionChange);
 	FCoreDelegates::ApplicationLicenseChange.AddUObject(this, &UShooterGameInstance::HandleAppLicenseUpdate);
 
 	FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UShooterGameInstance::OnPreLoadMap);
@@ -142,7 +143,7 @@ void UShooterGameInstance::Init()
 
 	// Register delegate for ticker callback
 	TickDelegate = FTickerDelegate::CreateUObject(this, &UShooterGameInstance::Tick);
-	TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(TickDelegate);
+	//TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(TickDelegate);
 
 	// Initialize the debug key with a set value for AES256. This is not secure and for example purposes only.
 	DebugTestEncryptionKey.SetNum(32);
@@ -158,73 +159,73 @@ void UShooterGameInstance::Shutdown()
 	Super::Shutdown();
 
 	// Unregister ticker delegate
-	FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+	//FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 }
 
 void UShooterGameInstance::HandleNetworkConnectionStatusChanged( const FString& ServiceName, EOnlineServerConnectionStatus::Type LastConnectionStatus, EOnlineServerConnectionStatus::Type ConnectionStatus )
 {
 	UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: %s" ), EOnlineServerConnectionStatus::ToString( ConnectionStatus ) );
 
-#if SHOOTER_CONSOLE_UI
-	// If we are disconnected from server, and not currently at (or heading to) the welcome screen
-	// then display a message on consoles
-	if (	OnlineMode != EOnlineMode::Offline && 
-			PendingState != ShooterGameInstanceState::WelcomeScreen &&
-			CurrentState != ShooterGameInstanceState::WelcomeScreen && 
-			ConnectionStatus != EOnlineServerConnectionStatus::Connected &&
-			ConnectionStatus != EOnlineServerConnectionStatus::Normal)
-	{
-		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: Going to main menu" ) );
-
-		// Display message on consoles
-#if PLATFORM_XBOXONE
-		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
-#elif PLATFORM_PS4
-		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to \"PSN\" has been lost." );
-#else
-		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
-#endif
-		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
-		
-		UWorld* const World = GetWorld();
-		AShooterGameMode* const GameMode = World != NULL ? Cast<AShooterGameMode>(World->GetAuthGameMode()) : NULL;
-		if (GameMode)
-		{
-			GameMode->AbortMatch();
-		}
-		
-		ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
-	}
-
-	CurrentConnectionStatus = ConnectionStatus;
-#endif
+// #if SHOOTER_CONSOLE_UI
+// 	// If we are disconnected from server, and not currently at (or heading to) the welcome screen
+// 	// then display a message on consoles
+// 	if (	OnlineMode != EOnlineMode::Offline && 
+// 			PendingState != ShooterGameInstanceState::WelcomeScreen &&
+// 			CurrentState != ShooterGameInstanceState::WelcomeScreen && 
+// 			ConnectionStatus != EOnlineServerConnectionStatus::Connected &&
+// 			ConnectionStatus != EOnlineServerConnectionStatus::Normal)
+// 	{
+// 		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: Going to main menu" ) );
+//
+// 		// Display message on consoles
+// #if PLATFORM_XBOXONE
+// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
+// #elif PLATFORM_PS4
+// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to \"PSN\" has been lost." );
+// #else
+// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
+// #endif
+// 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+// 		
+// 		UWorld* const World = GetWorld();
+// 		AShooterGameMode* const GameMode = World != NULL ? Cast<AShooterGameMode>(World->GetAuthGameMode()) : NULL;
+// 		if (GameMode)
+// 		{
+// 			GameMode->AbortMatch();
+// 		}
+// 		
+// 		ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
+// 	}
+//
+// 	CurrentConnectionStatus = ConnectionStatus;
+// #endif
 }
 
 void UShooterGameInstance::HandleSessionFailure( const FUniqueNetId& NetId, ESessionFailure::Type FailureType )
 {
 	UE_LOG( LogOnlineGame, Warning, TEXT( "UShooterGameInstance::HandleSessionFailure: %u" ), (uint32)FailureType );
 
-#if SHOOTER_CONSOLE_UI
-	// If we are not currently at (or heading to) the welcome screen then display a message on consoles
-	if (	OnlineMode != EOnlineMode::Offline &&
-			PendingState != ShooterGameInstanceState::WelcomeScreen &&
-			CurrentState != ShooterGameInstanceState::WelcomeScreen )
-	{
-		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleSessionFailure: Going to main menu" ) );
-
-		// Display message on consoles
-#if PLATFORM_XBOXONE
-		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
-#elif PLATFORM_PS4
-		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to PSN has been lost." );
-#else
-		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
-#endif
-		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
-		
-		ShowMessageThenGotoState( ReturnReason, OKButton,  FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
-	}
-#endif
+// #if SHOOTER_CONSOLE_UI
+// 	// If we are not currently at (or heading to) the welcome screen then display a message on consoles
+// 	if (	OnlineMode != EOnlineMode::Offline &&
+// 			PendingState != ShooterGameInstanceState::WelcomeScreen &&
+// 			CurrentState != ShooterGameInstanceState::WelcomeScreen )
+// 	{
+// 		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleSessionFailure: Going to main menu" ) );
+//
+// 		// Display message on consoles
+// #if PLATFORM_XBOXONE
+// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
+// #elif PLATFORM_PS4
+// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to PSN has been lost." );
+// #else
+// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
+// #endif
+// 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+// 		
+// 		ShowMessageThenGotoState( ReturnReason, OKButton,  FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
+// 	}
+// #endif
 }
 
 void UShooterGameInstance::OnPreLoadMap(const FString& MapName)
@@ -235,7 +236,7 @@ void UShooterGameInstance::OnPreLoadMap(const FString& MapName)
 		UGameViewportClient* GameViewportClient = GetGameViewportClient();
 		if (GameViewportClient != nullptr)
 		{
-			GameViewportClient->SetDisableSplitscreenOverride(false);
+			//GameViewportClient->SetDisableSplitscreenOverride(false);
 
 			bPendingEnableSplitscreen = false;
 		}
@@ -320,7 +321,7 @@ void UShooterGameInstance::StartGameInstance()
 	const TCHAR* Cmd = FCommandLine::Get();
 
 	// Catch the case where we want to override the map name on startup (used for connecting to other MP instances)
-	if (FParse::Token(Cmd, Parm, ARRAY_COUNT(Parm), 0) && Parm[0] != '-')
+	if (FParse::Token(Cmd, Parm, std::size(Parm), 0) && Parm[0] != '-')
 	{
 		// if we're 'overriding' with the default map anyway, don't set a bogus 'playing' state.
 		if (!MainMenuMap.Contains(Parm))
@@ -369,13 +370,14 @@ void UShooterGameInstance::StartGameInstance()
 
 FName UShooterGameInstance::GetInitialState()
 {
-#if SHOOTER_CONSOLE_UI	
-	// Start in the welcome screen state on consoles
-	return ShooterGameInstanceState::WelcomeScreen;
-#else
-	// On PC, go directly to the main menu
+// #if SHOOTER_CONSOLE_UI	
+// 	// Start in the welcome screen state on consoles
+// 	return ShooterGameInstanceState::WelcomeScreen;
+// #else
+// 	// On PC, go directly to the main menu
+// 	return ShooterGameInstanceState::MainMenu;
+// #endif
 	return ShooterGameInstanceState::MainMenu;
-#endif
 }
 
 void UShooterGameInstance::GotoInitialState()
@@ -652,7 +654,7 @@ void UShooterGameInstance::BeginWelcomeScreenState()
 	WelcomeMenuUI->AddToGameViewport();
 
 	// Disallow splitscreen (we will allow while in the playing state)
-	GetGameViewportClient()->SetDisableSplitscreenOverride( true );
+	//GetGameViewportClient()->SetDisableSplitscreenOverride( true );
 }
 
 void UShooterGameInstance::EndWelcomeScreenState()
@@ -703,7 +705,7 @@ void UShooterGameInstance::BeginMainMenuState()
 	
 	if (GameViewportClient)
 	{
-		GetGameViewportClient()->SetDisableSplitscreenOverride(true);
+		//GetGameViewportClient()->SetDisableSplitscreenOverride(true);
 	}
 
 	// Remove any possible splitscren players
@@ -730,15 +732,15 @@ void UShooterGameInstance::BeginMainMenuState()
 		MainMenuUI->OnPlayTogetherEventReceived();
 	}
 
-#if !SHOOTER_CONSOLE_UI
-	// The cached unique net ID is usually set on the welcome screen, but there isn't
-	// one on PC/Mac, so do it here.
-	if (Player != nullptr)
-	{
-		Player->SetControllerId(0);
-		Player->SetCachedUniqueNetId(Player->GetUniqueNetIdFromCachedControllerId().GetUniqueNetId());
-	}
-#endif
+// #if !SHOOTER_CONSOLE_UI
+// 	// The cached unique net ID is usually set on the welcome screen, but there isn't
+// 	// one on PC/Mac, so do it here.
+// 	if (Player != nullptr)
+// 	{
+// 		Player->SetControllerId(0);
+// 		Player->SetCachedUniqueNetId(Player->GetUniqueNetIdFromCachedControllerId().GetUniqueNetId());
+// 	}
+// #endif
 
 	RemoveNetworkFailureHandlers();
 }
@@ -799,7 +801,7 @@ void UShooterGameInstance::BeginPlayingState()
 void UShooterGameInstance::EndPlayingState()
 {
 	// Disallow splitscreen
-	GetGameViewportClient()->SetDisableSplitscreenOverride( true );
+	//GetGameViewportClient()->SetDisableSplitscreenOverride( true );
 
 	// Clear the players' presence information
 	SetPresenceForLocalPlayers(FString(TEXT("In Menu")), FVariantData(FString(TEXT("OnMenu"))));
@@ -951,8 +953,8 @@ bool UShooterGameInstance::HostQuickSession(ULocalPlayer& LocalPlayer, const FOn
 		const FString ChoppedMapName = TravelURL.RightChop(MapNameSubStr.Len());
 		const FString MapName = ChoppedMapName.LeftChop(ChoppedMapName.Len() - ChoppedMapName.Find("?game"));
 
-		HostSettings.Set(SETTING_GAMEMODE, GameType, EOnlineDataAdvertisementType::ViaOnlineService);
-		HostSettings.Set(SETTING_MAPNAME, MapName, EOnlineDataAdvertisementType::ViaOnlineService);
+		//HostSettings.Set(SETTING_GAMEMODE, GameType, EOnlineDataAdvertisementType::ViaOnlineService);
+		//HostSettings.Set(SETTING_MAPNAME, MapName, EOnlineDataAdvertisementType::ViaOnlineService);
 		HostSettings.NumPublicConnections = 16;
 
 		if (GameSession->HostSession(LocalPlayer.GetPreferredUniqueNetId().GetUniqueNetId(), NAME_GameSession, SessionSettings))
@@ -1297,11 +1299,12 @@ bool UShooterGameInstance::Tick(float DeltaSeconds)
 						LocalPlayers[i],
 						EShooterDialogType::ControllerDisconnected,
 						FText::Format(NSLOCTEXT("ProfileMessages", "PlayerReconnectControllerFmt", "Player {0}, please reconnect your controller."), FText::AsNumber(i + 1)),
-#if PLATFORM_PS4
-						NSLOCTEXT("DialogButtons", "PS4_CrossButtonContinue", "Cross Button - Continue"),
-#else
+// #if PLATFORM_PS4
+// 						NSLOCTEXT("DialogButtons", "PS4_CrossButtonContinue", "Cross Button - Continue"),
+// #else
+// 						NSLOCTEXT("DialogButtons", "AButtonContinue", "A - Continue"),
+// #endif
 						NSLOCTEXT("DialogButtons", "AButtonContinue", "A - Continue"),
-#endif
 						FText::GetEmpty(),
 						FOnClicked::CreateUObject(this, &UShooterGameInstance::OnControllerReconnectConfirm),
 						FOnClicked()
@@ -1389,15 +1392,15 @@ void UShooterGameInstance::HandleSignInChangeMessaging()
 	// Master user signed out, go to initial state (if we aren't there already)
 	if ( CurrentState != GetInitialState() )
 	{
-#if SHOOTER_CONSOLE_UI
-		// Display message on consoles
-		const FText ReturnReason	= NSLOCTEXT( "ProfileMessages", "SignInChange", "Sign in status change occurred." );
-		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
-
-		ShowMessageThenGotoState(ReturnReason, OKButton, FText::GetEmpty(), GetInitialState());
-#else								
-		GotoInitialState();
-#endif
+// #if SHOOTER_CONSOLE_UI
+// 		// Display message on consoles
+// 		const FText ReturnReason	= NSLOCTEXT( "ProfileMessages", "SignInChange", "Sign in status change occurred." );
+// 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+//
+// 		ShowMessageThenGotoState(ReturnReason, OKButton, FText::GetEmpty(), GetInitialState());
+// #else								
+// 		GotoInitialState();
+// #endif
 	}
 }
 
@@ -1588,60 +1591,60 @@ void UShooterGameInstance::HandleControllerPairingChanged( int GameUserIndex, co
 		return;
 	}
 
-#if SHOOTER_CONSOLE_UI && PLATFORM_XBOXONE
-	if ( IgnorePairingChangeForControllerId != -1 && GameUserIndex == IgnorePairingChangeForControllerId )
-	{
-		// We were told to ignore
-		IgnorePairingChangeForControllerId = -1;	// Reset now so there there is no chance this remains in a bad state
-		return;
-	}
-
-	if ( PreviousUser.IsValid() && !NewUser.IsValid() )
-	{
-		// Treat this as a disconnect or signout, which is handled somewhere else
-		return;
-	}
-
-	if ( !PreviousUser.IsValid() && NewUser.IsValid() )
-	{
-		// Treat this as a signin
-		ULocalPlayer * ControlledLocalPlayer = FindLocalPlayerFromControllerId( GameUserIndex );
-
-		if ( ControlledLocalPlayer != NULL && !ControlledLocalPlayer->GetCachedUniqueNetId().IsValid() )
-		{
-			// If a player that previously selected "continue without saving" signs into this controller, move them back to welcome screen
-			HandleSignInChangeMessaging();
-		}
-		
-		return;
-	}
-
-	// Find the local player currently being controlled by this controller
-	ULocalPlayer * ControlledLocalPlayer	= FindLocalPlayerFromControllerId( GameUserIndex );
-
-	// See if the newly assigned profile is in our local player list
-	ULocalPlayer * NewLocalPlayer			= FindLocalPlayerFromUniqueNetId( NewUser );
-
-	// If the local player being controlled is not the target of the pairing change, then give them a chance 
-	// to continue controlling the old player with this controller
-	if ( ControlledLocalPlayer != nullptr && ControlledLocalPlayer != NewLocalPlayer )
-	{
-		UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
-
-		if ( ShooterViewport != nullptr )
-		{
-			ShooterViewport->ShowDialog( 
-				nullptr,
-				EShooterDialogType::Generic,
-				NSLOCTEXT("ProfileMessages", "PairingChanged", "Your controller has been paired to another profile, would you like to switch to this new profile now? Selecting YES will sign out of the previous profile."),
-				NSLOCTEXT("DialogButtons", "YES", "A - YES"),
-				NSLOCTEXT("DialogButtons", "NO", "B - NO"),
-				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnPairingUseNewProfile),
-				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnPairingUsePreviousProfile)
-			);
-		}
-	}
-#endif
+// #if SHOOTER_CONSOLE_UI && PLATFORM_XBOXONE
+// 	if ( IgnorePairingChangeForControllerId != -1 && GameUserIndex == IgnorePairingChangeForControllerId )
+// 	{
+// 		// We were told to ignore
+// 		IgnorePairingChangeForControllerId = -1;	// Reset now so there there is no chance this remains in a bad state
+// 		return;
+// 	}
+//
+// 	if ( PreviousUser.IsValid() && !NewUser.IsValid() )
+// 	{
+// 		// Treat this as a disconnect or signout, which is handled somewhere else
+// 		return;
+// 	}
+//
+// 	if ( !PreviousUser.IsValid() && NewUser.IsValid() )
+// 	{
+// 		// Treat this as a signin
+// 		ULocalPlayer * ControlledLocalPlayer = FindLocalPlayerFromControllerId( GameUserIndex );
+//
+// 		if ( ControlledLocalPlayer != NULL && !ControlledLocalPlayer->GetCachedUniqueNetId().IsValid() )
+// 		{
+// 			// If a player that previously selected "continue without saving" signs into this controller, move them back to welcome screen
+// 			HandleSignInChangeMessaging();
+// 		}
+// 		
+// 		return;
+// 	}
+//
+// 	// Find the local player currently being controlled by this controller
+// 	ULocalPlayer * ControlledLocalPlayer	= FindLocalPlayerFromControllerId( GameUserIndex );
+//
+// 	// See if the newly assigned profile is in our local player list
+// 	ULocalPlayer * NewLocalPlayer			= FindLocalPlayerFromUniqueNetId( NewUser );
+//
+// 	// If the local player being controlled is not the target of the pairing change, then give them a chance 
+// 	// to continue controlling the old player with this controller
+// 	if ( ControlledLocalPlayer != nullptr && ControlledLocalPlayer != NewLocalPlayer )
+// 	{
+// 		UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
+//
+// 		if ( ShooterViewport != nullptr )
+// 		{
+// 			ShooterViewport->ShowDialog( 
+// 				nullptr,
+// 				EShooterDialogType::Generic,
+// 				NSLOCTEXT("ProfileMessages", "PairingChanged", "Your controller has been paired to another profile, would you like to switch to this new profile now? Selecting YES will sign out of the previous profile."),
+// 				NSLOCTEXT("DialogButtons", "YES", "A - YES"),
+// 				NSLOCTEXT("DialogButtons", "NO", "B - NO"),
+// 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnPairingUseNewProfile),
+// 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnPairingUsePreviousProfile)
+// 			);
+// 		}
+// 	}
+// #endif
 }
 
 void UShooterGameInstance::HandleControllerConnectionChange( bool bIsConnection, int32 Unused, int32 GameUserIndex )
@@ -1789,29 +1792,29 @@ bool UShooterGameInstance::ValidatePlayerForOnlinePlay(ULocalPlayer* LocalPlayer
 	// Get the viewport
 	UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
 
-#if PLATFORM_XBOXONE
-	if (CurrentConnectionStatus != EOnlineServerConnectionStatus::Connected)
-	{
-		// Don't let them play online if they aren't connected to Xbox LIVE
-		if (ShooterViewport != NULL)
-		{
-			const FText Msg				= NSLOCTEXT("NetworkFailures", "ServiceDisconnected", "You must be connected to the Xbox LIVE service to play online.");
-			const FText OKButtonString	= NSLOCTEXT("DialogButtons", "OKAY", "OK");
-
-			ShooterViewport->ShowDialog( 
-				NULL,
-				EShooterDialogType::Generic,
-				Msg,
-				OKButtonString,
-				FText::GetEmpty(),
-				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric),
-				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric)
-			);
-		}
-
-		return false;
-	}
-#endif
+// #if PLATFORM_XBOXONE
+// 	if (CurrentConnectionStatus != EOnlineServerConnectionStatus::Connected)
+// 	{
+// 		// Don't let them play online if they aren't connected to Xbox LIVE
+// 		if (ShooterViewport != NULL)
+// 		{
+// 			const FText Msg				= NSLOCTEXT("NetworkFailures", "ServiceDisconnected", "You must be connected to the Xbox LIVE service to play online.");
+// 			const FText OKButtonString	= NSLOCTEXT("DialogButtons", "OKAY", "OK");
+//
+// 			ShooterViewport->ShowDialog( 
+// 				NULL,
+// 				EShooterDialogType::Generic,
+// 				Msg,
+// 				OKButtonString,
+// 				FText::GetEmpty(),
+// 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric),
+// 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric)
+// 			);
+// 		}
+//
+// 		return false;
+// 	}
+//#endif
 
 	if (!IsLocalPlayerOnline(LocalPlayer))
 	{
@@ -1899,7 +1902,7 @@ void UShooterGameInstance::StartOnlinePrivilegeTask(const IOnlineIdentity::FOnGe
 	else
 	{
 		// Can only get away with faking the UniqueNetId here because the delegates don't use it
-		Delegate.ExecuteIfBound(FUniqueNetIdString(), Privilege, (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures);
+		//Delegate.ExecuteIfBound(FUniqueNetIdString(), Privilege, (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures);
 	}
 }
 
@@ -2124,7 +2127,7 @@ void UShooterGameInstance::ReceivedNetworkEncryptionToken(const FString& Encrypt
 	else
 	{
 		Response.Response = EEncryptionResponse::Success;
-		Response.EncryptionKey = DebugTestEncryptionKey;
+		//Response.EncryptionKey = DebugTestEncryptionKey;
 	}
 
 	Delegate.ExecuteIfBound(Response);
@@ -2143,7 +2146,7 @@ void UShooterGameInstance::ReceivedNetworkEncryptionAck(const FOnEncryptionKeyRe
 	TArray<uint8> FakeKey;
 	
 	Response.Response = EEncryptionResponse::Success;
-	Response.EncryptionKey = DebugTestEncryptionKey;
+	//Response.EncryptionKey = DebugTestEncryptionKey;
 
 	Delegate.ExecuteIfBound(Response);
 }

@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Bots/ShooterBot.h"
+#include "ShooterGame.h"
 #include "Bots/ShooterAIController.h"
 
 AShooterBot::AShooterBot(const FObjectInitializer& ObjectInitializer) 

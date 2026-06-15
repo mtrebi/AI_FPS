@@ -1,14 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
+#include "EQS/PathfiningTest.h"
 #include "ShooterGame.h"
 #include "NavigationSystem.h"
 #include "AI/Navigation/NavAgentInterface.h"
-#include "Public/Navigation/MyNavigationQueryFilter.h"
+#include "Navigation/MyNavigationQueryFilter.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
+#include "Navigation/MyRecastNavMesh.h"
 //#include "AIModulePrivate.h"
-#include "Public/EQS/PathfiningTest.h"
 
 #define LOCTEXT_NAMESPACE "EnvQueryGenerator"
 

@@ -1,12 +1,13 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Bots/BTTask_FindPickup.h"
+#include "ShooterGame.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/Blackboard/BlackboardKeyAllTypes.h"
 #include "Bots/ShooterAIController.h"
 #include "Bots/ShooterBot.h"
+#include "Online/ShooterGameMode.h"
 #include "Pickups/ShooterPickup_Ammo.h"
 #include "Weapons/ShooterWeapon_Instant.h"
 

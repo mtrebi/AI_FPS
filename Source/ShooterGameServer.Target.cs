@@ -9,7 +9,13 @@ public class ShooterGameServerTarget : TargetRules
 	public ShooterGameServerTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Server;
-		bUsesSteam = true;
+		DefaultBuildSettings = BuildSettingsVersion.V5;
+
+		// Use the latest include order version
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
+
+		// Ensure a unique build environment to avoid conflicts
+		//BuildEnvironment = TargetBuildEnvironment.Unique;
 
 		ExtraModuleNames.Add("ShooterGame");
 	}

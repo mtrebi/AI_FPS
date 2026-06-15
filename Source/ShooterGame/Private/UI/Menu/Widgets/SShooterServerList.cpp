@@ -1,8 +1,8 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "SShooterServerList.h"
-#include "SHeaderRow.h"
+#include "ShooterGame.h"
+#include "Widgets/Views/SHeaderRow.h"
 #include "ShooterStyle.h"
 #include "ShooterGameLoadingScreen.h"
 #include "ShooterGameInstance.h"
@@ -112,27 +112,27 @@ void SShooterServerList::UpdateSearchStatus()
 					check(SearchResults.Num() == NumSearchResults);
 					if (NumSearchResults == 0)
 					{
-#if PLATFORM_PS4
-						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS SQUARE TO TRY AGAIN");
-#elif PLATFORM_XBOXONE
-						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS X TO TRY AGAIN");
-#elif PLATFORM_SWITCH
-						StatusText = LOCTEXT("NoServersFound", "NO SERVERS FOUND, PRESS <img src=\"ShooterGame.Switch.Left\"/> TO TRY AGAIN");
-#else
-						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS SPACE TO TRY AGAIN");
-#endif
+// #if PLATFORM_PS4
+// 						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS SQUARE TO TRY AGAIN");
+// #elif PLATFORM_XBOXONE
+// 						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS X TO TRY AGAIN");
+// #elif PLATFORM_SWITCH
+// 						StatusText = LOCTEXT("NoServersFound", "NO SERVERS FOUND, PRESS <img src=\"ShooterGame.Switch.Left\"/> TO TRY AGAIN");
+// #else
+// 						StatusText = LOCTEXT("NoServersFound","NO SERVERS FOUND, PRESS SPACE TO TRY AGAIN");
+// #endif
 					}
 					else
 					{
-#if PLATFORM_PS4
-						StatusText = LOCTEXT("ServersRefresh","PRESS SQUARE TO REFRESH SERVER LIST");
-#elif PLATFORM_XBOXONE
-						StatusText = LOCTEXT("ServersRefresh","PRESS X TO REFRESH SERVER LIST");
-#elif PLATFORM_SWITCH
-						StatusText = LOCTEXT("ServersRefresh", "PRESS <img src=\"ShooterGame.Switch.Left\"/> TO REFRESH SERVER LIST");
-#else
-						StatusText = LOCTEXT("ServersRefresh","PRESS SPACE TO REFRESH SERVER LIST");
-#endif
+// #if PLATFORM_PS4
+// 						StatusText = LOCTEXT("ServersRefresh","PRESS SQUARE TO REFRESH SERVER LIST");
+// #elif PLATFORM_XBOXONE
+// 						StatusText = LOCTEXT("ServersRefresh","PRESS X TO REFRESH SERVER LIST");
+// #elif PLATFORM_SWITCH
+// 						StatusText = LOCTEXT("ServersRefresh", "PRESS <img src=\"ShooterGame.Switch.Left\"/> TO REFRESH SERVER LIST");
+// #else
+// 						StatusText = LOCTEXT("ServersRefresh","PRESS SPACE TO REFRESH SERVER LIST");
+// #endif
 					}
 
 					for (int32 IdxResult = 0; IdxResult < NumSearchResults; ++IdxResult)
@@ -151,8 +151,8 @@ void SShooterServerList::UpdateSearchStatus()
 							+ Result.Session.SessionSettings.NumPrivateConnections);
 						NewServerEntry->SearchResultsIndex = IdxResult;
 					
-						Result.Session.SessionSettings.Get(SETTING_GAMEMODE, NewServerEntry->GameType);
-						Result.Session.SessionSettings.Get(SETTING_MAPNAME, NewServerEntry->MapName);
+						//Result.Session.SessionSettings.Get(SETTING_GAMEMODE, NewServerEntry->GameType);
+						//Result.Session.SessionSettings.Get(SETTING_MAPNAME, NewServerEntry->MapName);
 
 						ServerList.Add(NewServerEntry);
 					}

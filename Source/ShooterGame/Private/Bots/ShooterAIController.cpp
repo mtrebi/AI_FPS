@@ -1,7 +1,7 @@
 // Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Bots/ShooterAIController.h"
+#include "ShooterGame.h"
 #include "Bots/ShooterBot.h"
 #include "Online/ShooterPlayerState.h"
 #include "BehaviorTree/BehaviorTree.h"
@@ -11,13 +11,13 @@
 #include "BehaviorTree/Blackboard/BlackboardKeyType_Object.h"
 #include "Weapons/ShooterWeapon.h"
 #include "Navigation/CrowdFollowingComponent.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/CoverBaseClass.h"
+#include "Others/HelperMethods.h"
+#include "EQS/CoverBaseClass.h"
 #include "Perception/AISense_Sight.h"
 #include "Perception/AISense_Hearing.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AIPerceptionListenerInterface.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
+#include "Navigation/MyRecastNavMesh.h"
 
 AShooterAIController::AShooterAIController(const FObjectInitializer& ObjectInitializer) 
 	//: Super(ObjectInitializer) {
@@ -538,7 +538,7 @@ bool AShooterAIController::IsLineOfSightClearOfBots() const {
 	CollisionParams.AddIgnoredActor(pawn);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(OutHit, ViewPoint, TargetLocation, COLLISION_WEAPON, CollisionParams);
-	if (bHit && OutHit.Actor->GetName().Contains("Bot"))
+	if (bHit && OutHit.GetActor()->GetName().Contains("Bot"))
 	{
 		return false;
 	}
@@ -794,7 +794,7 @@ void AShooterAIController::UpdateMyVisibility() {
 		CollisionParams.AddIgnoredActor(BotPawn);
 
 		const bool BlockingHitFound = World->LineTraceSingleByChannel(OutHit, UpMyLocation, UpPlayerLocation, ECollisionChannel::ECC_Visibility, CollisionParams);
-		SetPL_fIsVisible(BlockingHitFound && OutHit.Actor->GetName().Contains("Player"));
+		SetPL_fIsVisible(BlockingHitFound && OutHit.GetActor()->GetName().Contains("Player"));
 	}
 	else if (BotPawn) {
 		State a = GetAI_State();
@@ -969,7 +969,7 @@ bool AShooterAIController::PositionIsSafeCover(const FVector CoverPosition, cons
 
 	const bool BlockingHitFound = World->LineTraceSingleByChannel(OutHit, UpCoverPosition, UpPlayerLocation, ECollisionChannel::ECC_Visibility, CollisionParams);
 
-	if (BlockingHitFound && !OutHit.Actor->GetName().Contains("Player")) {
+	if (BlockingHitFound && !OutHit.GetActor()->GetName().Contains("Player")) {
 		// Hit some obstacle
 		PositionIsSafeCover = true;
 	}

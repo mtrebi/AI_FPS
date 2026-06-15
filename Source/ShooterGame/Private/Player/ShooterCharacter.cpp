@@ -1,5 +1,6 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "Player/ShooterCharacter.h"
 #include "ShooterGame.h"
 #include "Weapons/ShooterWeapon.h"
 #include "Weapons/ShooterDamageType.h"
@@ -9,6 +10,7 @@
 #include "Animation/AnimInstance.h"
 #include "Sound/SoundNodeLocalPlayer.h"
 #include "AudioThread.h"
+#include "Player/ShooterCharacterMovement.h"
 
 static int32 NetVisualizeRelevancyTestPoints = 0;
 FAutoConsoleVariableRef CVarNetVisualizeRelevancyTestPoints(
@@ -73,7 +75,7 @@ void AShooterCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	if (Role == ROLE_Authority)
+	if (GetLocalRole() == ROLE_Authority)
 	{
 		Health = GetMaxHealth();
 		SpawnDefaultInventory();
@@ -205,7 +207,7 @@ void AShooterCharacter::UpdateTeamColors(UMaterialInstanceDynamic* UseMID)
 void AShooterCharacter::OnCameraUpdate(const FVector& CameraLocation, const FRotator& CameraRotation)
 {
 	USkeletalMeshComponent* DefMesh1P = Cast<USkeletalMeshComponent>(GetClass()->GetDefaultSubobjectByName(TEXT("PawnMesh1P")));
-	const FMatrix DefMeshLS = FRotationTranslationMatrix(DefMesh1P->RelativeRotation, DefMesh1P->RelativeLocation);
+	const FMatrix DefMeshLS = FRotationTranslationMatrix(DefMesh1P->GetRelativeRotation(), DefMesh1P->GetRelativeLocation());
 	const FMatrix LocalToWorld = ActorToWorld().ToMatrixWithScale();
 
 	// Mesh rotating code expect uniform scale in LocalToWorld matrix
@@ -238,7 +240,7 @@ void AShooterCharacter::Suicide()
 
 void AShooterCharacter::KilledBy(APawn* EventInstigator)
 {
-	if (Role == ROLE_Authority && !bIsDying)
+	if (GetLocalRole() == ROLE_Authority && !bIsDying)
 	{
 		AController* Killer = NULL;
 		if (EventInstigator != NULL)
@@ -292,8 +294,8 @@ float AShooterCharacter::TakeDamage(float Damage, struct FDamageEvent const& Dam
 bool AShooterCharacter::CanDie(float KillingDamage, FDamageEvent const& DamageEvent, AController* Killer, AActor* DamageCauser) const
 {
 	if (bIsDying										// already dying
-		|| IsPendingKill()								// already destroyed
-		|| Role != ROLE_Authority						// not authority
+		|| IsPendingKill(EGCOptions::None)								// already destroyed
+		|| GetLocalRole() != ROLE_Authority						// not authority
 		|| GetWorld()->GetAuthGameMode<AShooterGameMode>() == NULL
 		|| GetWorld()->GetAuthGameMode<AShooterGameMode>()->GetMatchState() == MatchState::LeavingMap)	// level transition occurring
 	{
@@ -317,7 +319,16 @@ bool AShooterCharacter::Die(float KillingDamage, FDamageEvent const& DamageEvent
 	UDamageType const* const DamageType = DamageEvent.DamageTypeClass ? DamageEvent.DamageTypeClass->GetDefaultObject<UDamageType>() : GetDefault<UDamageType>();
 	Killer = GetDamageInstigator(Killer, *DamageType);
 
-	AController* const KilledPlayer = (Controller != NULL) ? Controller : Cast<AController>(GetOwner());
+	//AController* KilledPlayer = (Controller != NULL) ? Controller : Cast<AController>(GetOwner());
+	AController* KilledPlayer = nullptr;
+	if (Controller != NULL)
+	{
+		KilledPlayer = Controller;
+	}
+	else
+	{
+		KilledPlayer = Cast<AController>(GetOwner());
+	}
 	GetWorld()->GetAuthGameMode<AShooterGameMode>()->Killed(Killer, KilledPlayer, this, DamageType);
 
 	NetUpdateFrequency = GetDefault<AShooterCharacter>()->NetUpdateFrequency;
@@ -335,11 +346,11 @@ void AShooterCharacter::OnDeath(float KillingDamage, struct FDamageEvent const& 
 		return;
 	}
 
-	bReplicateMovement = false;
+	SetReplicateMovement(false);
 	TearOff();
 	bIsDying = true;
 
-	if (Role == ROLE_Authority)
+	if (GetLocalRole() == ROLE_Authority)
 	{
 		ReplicateHit(KillingDamage, DamageEvent, PawnInstigator, DamageCauser, true);
 
@@ -418,7 +429,7 @@ void AShooterCharacter::OnDeath(float KillingDamage, struct FDamageEvent const& 
 
 void AShooterCharacter::PlayHit(float DamageTaken, struct FDamageEvent const& DamageEvent, class APawn* PawnInstigator, class AActor* DamageCauser)
 {
-	if (Role == ROLE_Authority)
+	if (GetLocalRole() == ROLE_Authority)
 	{
 		ReplicateHit(DamageTaken, DamageEvent, PawnInstigator, DamageCauser, false);
 
@@ -464,7 +475,7 @@ void AShooterCharacter::SetRagdollPhysics()
 {
 	bool bInRagdoll = false;
 
-	if (IsPendingKill())
+	if (IsPendingKill(EGCOptions::None))
 	{
 		bInRagdoll = false;
 	}
@@ -557,7 +568,7 @@ bool AShooterCharacter::IsMoving()
 
 void AShooterCharacter::SpawnDefaultInventory()
 {
-	if (Role < ROLE_Authority)
+	if (GetLocalRole() < ROLE_Authority)
 	{
 		return;
 	}
@@ -583,7 +594,7 @@ void AShooterCharacter::SpawnDefaultInventory()
 
 void AShooterCharacter::DestroyInventory()
 {
-	if (Role < ROLE_Authority)
+	if (GetLocalRole() < ROLE_Authority)
 	{
 		return;
 	}
@@ -602,7 +613,7 @@ void AShooterCharacter::DestroyInventory()
 
 void AShooterCharacter::AddWeapon(AShooterWeapon* Weapon)
 {
-	if (Weapon && Role == ROLE_Authority)
+	if (Weapon && GetLocalRole() == ROLE_Authority)
 	{
 		Weapon->OnEnterInventory(this);
 		Inventory.AddUnique(Weapon);
@@ -611,7 +622,7 @@ void AShooterCharacter::AddWeapon(AShooterWeapon* Weapon)
 
 void AShooterCharacter::RemoveWeapon(AShooterWeapon* Weapon)
 {
-	if (Weapon && Role == ROLE_Authority)
+	if (Weapon && GetLocalRole() == ROLE_Authority)
 	{
 		Weapon->OnLeaveInventory();
 		Inventory.RemoveSingle(Weapon);
@@ -635,7 +646,7 @@ void AShooterCharacter::EquipWeapon(AShooterWeapon* Weapon)
 {
 	if (Weapon)
 	{
-		if (Role == ROLE_Authority)
+		if (GetLocalRole() == ROLE_Authority)
 		{
 			SetCurrentWeapon(Weapon, CurrentWeapon);
 		}
@@ -738,7 +749,7 @@ void AShooterCharacter::SetTargeting(bool bNewTargeting)
 		UGameplayStatics::SpawnSoundAttached(TargetingSound, GetRootComponent());
 	}
 
-	if (Role < ROLE_Authority)
+	if (GetLocalRole() < ROLE_Authority)
 	{
 		ServerSetTargeting(bNewTargeting);
 	}
@@ -762,7 +773,7 @@ void AShooterCharacter::SetRunning(bool bNewRunning, bool bToggle)
 	bWantsToRun = bNewRunning;
 	bWantsToRunToggled = bNewRunning && bToggle;
 
-	if (Role < ROLE_Authority)
+	if (GetLocalRole() < ROLE_Authority)
 	{
 		ServerSetRunning(bNewRunning, bToggle);
 	}

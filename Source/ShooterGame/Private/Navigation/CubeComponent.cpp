@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Navigation/CubeComponent.h"
 #include "ShooterGame.h"
-#include "CubeComponent.h"
 
 
 // Sets default values for this component's properties

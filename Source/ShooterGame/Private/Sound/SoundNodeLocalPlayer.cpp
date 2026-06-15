@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Sound/SoundNodeLocalPlayer.h"
+#include "ShooterGame.h"
 #include "SoundDefinitions.h"
 
 #define LOCTEXT_NAMESPACE "SoundNodeLocalPlayer"

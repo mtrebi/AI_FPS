@@ -1,8 +1,8 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #include "ShooterGameLoadingScreen.h"
-#include "GenericApplication.h"
-#include "GenericApplicationMessageHandler.h"
+#include "GenericPlatform/GenericApplication.h"
+#include "GenericPlatform/GenericApplicationMessageHandler.h"
 #include "SlateBasics.h"
 #include "SlateExtras.h"
 #include "MoviePlayer.h"
@@ -17,9 +17,14 @@ struct FShooterGameLoadingScreenBrush : public FSlateDynamicImageBrush, public F
 		SetResourceObject(LoadObject<UObject>( NULL, *InTextureName.ToString() ));
 	}
 
-	virtual void AddReferencedObjects(FReferenceCollector& Collector)
+	virtual void AddReferencedObjects(FReferenceCollector& Collector) override
 	{
 		FSlateBrush::AddReferencedObjects(Collector);
+	}
+
+	virtual FString GetReferencerName() const override
+	{
+		return TEXT("FShooterGameLoadingScreenBrush");
 	}
 };
 

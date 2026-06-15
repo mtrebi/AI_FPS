@@ -1,20 +1,21 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "SShooterScoreboardWidget.h"
+#include "ShooterGame.h"
 #include "ShooterStyle.h"
 #include "ShooterScoreboardWidgetStyle.h"
 #include "ShooterUIHelpers.h"
+#include "Online/ShooterGameState.h"
 #include "Online/ShooterPlayerState.h"
 
 #define LOCTEXT_NAMESPACE "ShooterScoreboard"
 
 // @todo: prevent interaction on PC for now (see OnFocusReceived for reasons)
-#if PLATFORM_XBOXONE
-#define INTERACTIVE_SCOREBOARD	1
-#else
-#define INTERACTIVE_SCOREBOARD	0
-#endif
+// #if PLATFORM_XBOXONE
+// #define INTERACTIVE_SCOREBOARD	1
+// #else
+// #define INTERACTIVE_SCOREBOARD	0
+// #endif
 
 #define	NORM_PADDING	(FMargin(5))
 
@@ -32,17 +33,17 @@ void SShooterScoreboardWidget::Construct(const FArguments& InArgs)
 
 	UpdatePlayerStateMaps();
 	
-	Columns.Add(FColumnData(LOCTEXT("KillsColumn", "Kills"),
-		ScoreboardStyle->KillStatColor,
-		FOnGetPlayerStateAttribute::CreateSP(this, &SShooterScoreboardWidget::GetAttributeValue_Kills)));
+	// Columns.Add(FColumnData(LOCTEXT("KillsColumn", "Kills"),
+	// 	ScoreboardStyle->KillStatColor,
+	// 	FOnGetPlayerStateAttribute::CreateSP(this, &SShooterScoreboardWidget::GetAttributeValue_Kills)));
 
-	Columns.Add(FColumnData(LOCTEXT("DeathsColumn", "Deaths"),
-		ScoreboardStyle->DeathStatColor,
-		FOnGetPlayerStateAttribute::CreateSP(this, &SShooterScoreboardWidget::GetAttributeValue_Deaths)));
+	// Columns.Add(FColumnData(LOCTEXT("DeathsColumn", "Deaths"),
+	// 	ScoreboardStyle->DeathStatColor,
+	// 	FOnGetPlayerStateAttribute::CreateSP(this, &SShooterScoreboardWidget::GetAttributeValue_Deaths)));
 
-	Columns.Add(FColumnData(LOCTEXT("ScoreColumn", "Score"),
-		ScoreboardStyle->ScoreStatColor,
-		FOnGetPlayerStateAttribute::CreateSP(this, &SShooterScoreboardWidget::GetAttributeValue_Score)));
+	// Columns.Add(FColumnData(LOCTEXT("ScoreColumn", "Score"),
+	// 	ScoreboardStyle->ScoreStatColor,
+	// 	FOnGetPlayerStateAttribute::CreateSP(this, &SShooterScoreboardWidget::GetAttributeValue_Score)));
 
 	TSharedPtr<SHorizontalBox> HeaderCols;
 
@@ -306,12 +307,12 @@ void SShooterScoreboardWidget::Tick( const FGeometry& AllottedGeometry, const do
 
 bool SShooterScoreboardWidget::SupportsKeyboardFocus() const
 {
-#if INTERACTIVE_SCOREBOARD
-	if (MatchState > EShooterMatchState::Playing)
-	{
-		return true;
-	}
-#endif
+// #if INTERACTIVE_SCOREBOARD
+// 	if (MatchState > EShooterMatchState::Playing)
+// 	{
+// 		return true;
+// 	}
+// #endif
 	return false;
 }
 
@@ -371,13 +372,13 @@ void SShooterScoreboardWidget::PlaySound(const FSlateSound& SoundToPlay) const
 
 FReply SShooterScoreboardWidget::OnMouseOverPlayer(const FGeometry& Geometry, const FPointerEvent& Event, const FTeamPlayer TeamPlayer)
 {
-#if INTERACTIVE_SCOREBOARD
-	if( !(SelectedPlayer == TeamPlayer) )
-	{
-		SelectedPlayer = TeamPlayer;
-		PlaySound(ScoreboardStyle->PlayerChangeSound);
-	}
-#endif
+// #if INTERACTIVE_SCOREBOARD
+// 	if( !(SelectedPlayer == TeamPlayer) )
+// 	{
+// 		SelectedPlayer = TeamPlayer;
+// 		PlaySound(ScoreboardStyle->PlayerChangeSound);
+// 	}
+// #endif
 	return FReply::Handled();
 }
 
@@ -529,22 +530,22 @@ bool SShooterScoreboardWidget::IsSelectedPlayer(const FTeamPlayer& TeamPlayer) c
 
 bool SShooterScoreboardWidget::IsPlayerSelectedAndValid() const
 {
-#if INTERACTIVE_SCOREBOARD
-	if( !SelectedPlayer.IsValid() )
-	{
-		// Nothing is selected, default to the player
-		if( PCOwner.IsValid() && PCOwner->PlayerState )
-		{
-			const TSharedPtr<const FUniqueNetId> OwnerNetId = PCOwner->PlayerState->UniqueId.GetUniqueNetId();
-			return OwnerNetId.IsValid();
-		}
-	}
-	else if( const AShooterPlayerState* PlayerState = GetSortedPlayerState(SelectedPlayer) ) 
-	{
-		const TSharedPtr<const FUniqueNetId>& PlayerId = PlayerState->UniqueId.GetUniqueNetId();
-		return PlayerId.IsValid();
-	}
-#endif
+// #if INTERACTIVE_SCOREBOARD
+// 	if( !SelectedPlayer.IsValid() )
+// 	{
+// 		// Nothing is selected, default to the player
+// 		if( PCOwner.IsValid() && PCOwner->PlayerState )
+// 		{
+// 			const TSharedPtr<const FUniqueNetId> OwnerNetId = PCOwner->PlayerState->UniqueId.GetUniqueNetId();
+// 			return OwnerNetId.IsValid();
+// 		}
+// 	}
+// 	else if( const AShooterPlayerState* PlayerState = GetSortedPlayerState(SelectedPlayer) ) 
+// 	{
+// 		const TSharedPtr<const FUniqueNetId>& PlayerId = PlayerState->UniqueId.GetUniqueNetId();
+// 		return PlayerId.IsValid();
+// 	}
+// #endif
 	return false;
 }
 
@@ -784,50 +785,50 @@ TSharedRef<SWidget> SShooterScoreboardWidget::MakePlayerRow(const FTeamPlayer& T
 	];
 
 	//first autosized row with player name
-	PlayerRow->AddSlot() .Padding(Pad)
-	[
-		SNew(SBorder)
-		.Padding(Pad)
-		.HAlign(HAlign_Right)
-		.VAlign(VAlign_Center)
-		.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
-		.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
-		.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
-		.BorderImage(&ScoreboardStyle->ItemBorderBrush)
-		[
-			SNew(STextBlock)
-			.Text(this, &SShooterScoreboardWidget::GetPlayerName, TeamPlayer)
-			.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
-			.ColorAndOpacity(this, &SShooterScoreboardWidget::GetPlayerColor, TeamPlayer)
-		]
-	];
+	// PlayerRow->AddSlot() .Padding(Pad)
+	// [
+	// 	SNew(SBorder)
+	// 	.Padding(Pad)
+	// 	.HAlign(HAlign_Right)
+	// 	.VAlign(VAlign_Center)
+	// 	.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
+	// 	.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
+	// 	.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
+	// 	.BorderImage(&ScoreboardStyle->ItemBorderBrush)
+	// 	[
+	// 		SNew(STextBlock)
+	// 		.Text(this, &SShooterScoreboardWidget::GetPlayerName, TeamPlayer)
+	// 		.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
+	// 		.ColorAndOpacity(this, &SShooterScoreboardWidget::GetPlayerColor, TeamPlayer)
+	// 	]
+	// ];
 	//attributes rows (kills, deaths, score/captures)
-	for (uint8 ColIdx = 0; ColIdx < Columns.Num(); ColIdx++)
-	{
-		PlayerRow->AddSlot()
-		.Padding(Pad) .AutoWidth() .HAlign(HAlign_Center) .VAlign(VAlign_Center)
-		[
-			SNew(SBorder)
-			.Padding(Pad)
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Center)
-			.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
-			.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
-			.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
-			.BorderImage(&ScoreboardStyle->ItemBorderBrush)
-			[
-				SNew(SBox)
-				.WidthOverride(ScoreBoxWidth)
-				.HAlign(HAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text(this, &SShooterScoreboardWidget::GetStat, Columns[ColIdx].AttributeGetter, TeamPlayer)
-					.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
-					.ColorAndOpacity(this, &SShooterScoreboardWidget::GetColumnColor, TeamPlayer, ColIdx)
-				]
-			]
-		];
-	}
+	// for (uint8 ColIdx = 0; ColIdx < Columns.Num(); ColIdx++)
+	// {
+	// 	PlayerRow->AddSlot()
+	// 	.Padding(Pad) .AutoWidth() .HAlign(HAlign_Center) .VAlign(VAlign_Center)
+	// 	[
+	// 		SNew(SBorder)
+	// 		.Padding(Pad)
+	// 		.VAlign(VAlign_Center)
+	// 		.HAlign(HAlign_Center)
+	// 		.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
+	// 		.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
+	// 		.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
+	// 		.BorderImage(&ScoreboardStyle->ItemBorderBrush)
+	// 		[
+	// 			SNew(SBox)
+	// 			.WidthOverride(ScoreBoxWidth)
+	// 			.HAlign(HAlign_Center)
+	// 			[
+	// 				SNew(STextBlock)
+	// 				.Text(this, &SShooterScoreboardWidget::GetStat, Columns[ColIdx].AttributeGetter, TeamPlayer)
+	// 				.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
+	// 				.ColorAndOpacity(this, &SShooterScoreboardWidget::GetColumnColor, TeamPlayer, ColIdx)
+	// 			]
+	// 		]
+	// 	];
+	// }
 	return PlayerRow.ToSharedRef();
 }
 

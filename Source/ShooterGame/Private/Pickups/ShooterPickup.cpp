@@ -1,7 +1,9 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Pickups/ShooterPickup.h"
+#include "ShooterGame.h"
+#include "Player/ShooterCharacter.h"
+#include "Online/ShooterGameMode.h"
 #include "Particles/ParticleSystemComponent.h"
 
 AShooterPickup::AShooterPickup(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -58,14 +60,14 @@ void AShooterPickup::GivePickupTo(class AShooterCharacter* Pawn)
 
 void AShooterPickup::PickupOnTouch(class AShooterCharacter* Pawn)
 {
-	if (bIsActive && Pawn && Pawn->IsAlive() && !IsPendingKill())
+	if (bIsActive && Pawn && Pawn->IsAlive() && !IsPendingKill(EGCOptions::None))
 	{
 		if (CanBePickedUp(Pawn))
 		{
 			GivePickupTo(Pawn);
 			PickedUpBy = Pawn;
 
-			if (!IsPendingKill())
+			if (!IsPendingKill(EGCOptions::None))
 			{
 				bIsActive = false;
 				OnPickedUp();

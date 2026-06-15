@@ -1,7 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Others/SearchLocations.h"
+
 #include "ShooterGame.h"
-#include "Public/Others/SearchLocations.h"
 
 
 // Sets default values

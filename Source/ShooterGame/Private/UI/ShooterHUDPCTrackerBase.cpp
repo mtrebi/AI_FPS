@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterHUDPCTrackerBase.h"
+#include "ShooterGame.h"
 
 
 /** Initialize with a world context. */

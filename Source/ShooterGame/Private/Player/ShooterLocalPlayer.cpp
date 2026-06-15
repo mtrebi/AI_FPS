@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Player/ShooterLocalPlayer.h"
+#include "ShooterGame.h"
 #include "OnlineSubsystemUtilsClasses.h"
 #include "ShooterGameInstance.h"
 
@@ -41,15 +41,15 @@ void UShooterLocalPlayer::LoadPersistentUser()
 	if (PersistentUser == NULL)
 	{
 		// Use the platform id here to be resilient in the face of controller swapping and similar situations.
-		FPlatformUserId PlatformId = GetControllerId();
+		//FPlatformUserId PlatformId = GetControllerId();
 
-		auto Identity = Online::GetIdentityInterface();
-		if (Identity.IsValid() && GetPreferredUniqueNetId().IsValid())
-		{
-			PlatformId = Identity->GetPlatformUserIdFromUniqueNetId(*GetPreferredUniqueNetId());
-		}
-
-		PersistentUser = UShooterPersistentUser::LoadPersistentUser(SaveGameName, PlatformId );
+		// auto Identity = Online::GetIdentityInterface();
+		// if (Identity.IsValid() && GetPreferredUniqueNetId().IsValid())
+		// {
+		// 	PlatformId = Identity->GetPlatformUserIdFromUniqueNetId(*GetPreferredUniqueNetId());
+		// }
+		//
+		// PersistentUser = UShooterPersistentUser::LoadPersistentUser(SaveGameName, PlatformId );
 	}
 }
 

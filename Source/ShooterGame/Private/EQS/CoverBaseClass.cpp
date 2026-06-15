@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/CoverBaseClass.h"
 #include "ShooterGame.h"
-#include "CoverBaseClass.h"
 
 
 // Sets default values

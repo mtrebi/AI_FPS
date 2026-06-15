@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Player/ShooterPlayerController.h"
+#include "ShooterGame.h"
 #include "Player/ShooterPlayerCameraManager.h"
 #include "Player/ShooterCheatManager.h"
 #include "Player/ShooterLocalPlayer.h"
@@ -11,11 +11,11 @@
 #include "UI/Style/ShooterStyle.h"
 #include "UI/ShooterHUD.h"
 #include "Online.h"
-#include "OnlineAchievementsInterface.h"
-#include "OnlineEventsInterface.h"
-#include "OnlineStatsInterface.h"
-#include "OnlineIdentityInterface.h"
-#include "OnlineSessionInterface.h"
+#include "Interfaces/OnlineAchievementsInterface.h"
+#include "Interfaces/OnlineEventsInterface.h"
+#include "Interfaces/OnlineStatsInterface.h"
+#include "Interfaces/OnlineIdentityInterface.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "ShooterGameInstance.h"
 #include "ShooterLeaderboards.h"
 #include "ShooterGameViewportClient.h"
@@ -354,7 +354,7 @@ bool AShooterPlayerController::FindDeathCameraSpot(FVector& CameraLocation, FRot
 	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(DeathCamera), true, GetPawn());
 
 	FHitResult HitResult;
-	for (int32 i = 0; i < ARRAY_COUNT(YawOffsets); i++)
+	for (int32 i = 0; i < std::size(YawOffsets); i++)
 	{
 		FRotator CameraDir = ViewDir;
 		CameraDir.Yaw += YawOffsets[i];
@@ -754,30 +754,30 @@ void AShooterPlayerController::HandleReturnToMainMenu()
 	CleanupSessionOnReturnToMenu();
 }
 
-void AShooterPlayerController::ClientReturnToMainMenu_Implementation(const FString& InReturnReason)
-{		
-	UShooterGameInstance* SGI = GetWorld() != NULL ? Cast<UShooterGameInstance>(GetWorld()->GetGameInstance()) : NULL;
-
-	if ( !ensure( SGI != NULL ) )
-	{
-		return;
-	}
-
-	if ( GetNetMode() == NM_Client )
-	{
-		const FText ReturnReason	= NSLOCTEXT( "NetworkErrors", "HostQuit", "The host has quit the match." );
-		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
-
-		SGI->ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
-	}
-	else
-	{
-		SGI->GotoState(ShooterGameInstanceState::MainMenu);
-	}
-
-	// Clear the flag so we don't do normal end of round stuff next
-	bGameEndedFrame = false;
-}
+// void AShooterPlayerController::ClientReturnToMainMenu_Implementation(const FString& InReturnReason)
+// {		
+// 	UShooterGameInstance* SGI = GetWorld() != NULL ? Cast<UShooterGameInstance>(GetWorld()->GetGameInstance()) : NULL;
+//
+// 	if ( !ensure( SGI != NULL ) )
+// 	{
+// 		return;
+// 	}
+//
+// 	if ( GetNetMode() == NM_Client )
+// 	{
+// 		const FText ReturnReason	= NSLOCTEXT( "NetworkErrors", "HostQuit", "The host has quit the match." );
+// 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+//
+// 		SGI->ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
+// 	}
+// 	else
+// 	{
+// 		SGI->GotoState(ShooterGameInstanceState::MainMenu);
+// 	}
+//
+// 	// Clear the flag so we don't do normal end of round stuff next
+// 	bGameEndedFrame = false;
+// }
 
 /** Ends and/or destroys game session */
 void AShooterPlayerController::CleanupSessionOnReturnToMenu()
@@ -1293,11 +1293,11 @@ void AShooterPlayerController::UpdateLeaderboardsOnGameEnd()
 							int32 KillsWriteData = ShooterPlayerState->GetKills();
 							int32 DeathsWriteData = ShooterPlayerState->GetDeaths();
 
-#if !PLATFORM_XBOXONE
-							StatMatchesPlayed = (MatchWriteData += StatMatchesPlayed);
-							StatKills = (KillsWriteData += StatKills);
-							StatDeaths = (DeathsWriteData += StatDeaths);
-#endif
+// #if !PLATFORM_XBOXONE
+// 							StatMatchesPlayed = (MatchWriteData += StatMatchesPlayed);
+// 							StatKills = (KillsWriteData += StatKills);
+// 							StatDeaths = (DeathsWriteData += StatDeaths);
+// #endif
 
 							ResultsWriteObject.SetIntStat(LEADERBOARD_STAT_SCORE, KillsWriteData);
 							ResultsWriteObject.SetIntStat(LEADERBOARD_STAT_KILLS, KillsWriteData);

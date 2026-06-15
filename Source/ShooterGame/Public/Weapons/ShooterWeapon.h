@@ -4,6 +4,7 @@
 
 #include "GameFramework/Actor.h"
 #include "Engine/Canvas.h" // for FCanvasIcon
+#include "LegacyCameraShake.h"
 #include "ShooterWeapon.generated.h"
 
 class UAnimMontage;
@@ -317,7 +318,7 @@ protected:
 
 	/** camera shake on firing */
 	UPROPERTY(EditDefaultsOnly, Category=Effects)
-	TSubclassOf<UCameraShake> FireCameraShake;
+	TSubclassOf<ULegacyCameraShake> FireCameraShake;
 
 	/** force feedback effect to play when the weapon is fired */
 	UPROPERTY(EditDefaultsOnly, Category=Effects)

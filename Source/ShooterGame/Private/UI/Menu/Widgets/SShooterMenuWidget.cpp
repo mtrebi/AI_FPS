@@ -1,8 +1,8 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "SShooterMenuWidget.h"
 #include "ShooterGame.h"
 #include "Engine/Console.h"
-#include "SShooterMenuWidget.h"
 #include "ShooterMenuItem.h"
 #include "SShooterMenuItem.h"
 #include "ShooterStyle.h"
@@ -15,11 +15,11 @@
 
 #define LOCTEXT_NAMESPACE "SShooterMenuWidget"
 
-#if PLATFORM_XBOXONE
-#define PROFILE_SWAPPING	1
-#else
-#define PROFILE_SWAPPING	0
-#endif
+// #if PLATFORM_XBOXONE
+// #define PROFILE_SWAPPING	1
+// #else
+// #define PROFILE_SWAPPING	0
+// #endif
 
 void SShooterMenuWidget::Construct(const FArguments& InArgs)
 {
@@ -224,12 +224,13 @@ FMargin SShooterMenuWidget::GetProfileSwapOffset() const
 
 bool SShooterMenuWidget::IsProfileSwapActive() const
 {
-#if PROFILE_SWAPPING
-	// Dont' show if ingame or not on the main menu screen
-	return !bGameMenu && MenuHistory.Num() == 0 ? true : false;
-#else
+// #if PROFILE_SWAPPING
+// 	// Dont' show if ingame or not on the main menu screen
+// 	return !bGameMenu && MenuHistory.Num() == 0 ? true : false;
+// #else
+// 	return false;
+// #endif
 	return false;
-#endif
 }
 
 EVisibility SShooterMenuWidget::GetProfileSwapVisibility() const
@@ -241,17 +242,17 @@ bool SShooterMenuWidget::ProfileUISwap(const int ControllerIndex) const
 {
 	if(IsProfileSwapActive())
 	{
-		const FOnLoginUIClosedDelegate Delegate = FOnLoginUIClosedDelegate::CreateSP( this, &SShooterMenuWidget::HandleProfileUISwapClosed );
-		if ( ShooterUIHelpers::Get().ProfileSwapUI(ControllerIndex, false, &Delegate) )
-		{
-			UShooterGameInstance* GameInstance = PlayerOwner.IsValid() ? Cast< UShooterGameInstance >( PlayerOwner->GetGameInstance() ) : nullptr;
-
-			if ( GameInstance != nullptr )
-			{
-				GameInstance->SetIgnorePairingChangeForControllerId( ControllerIndex );
-			}
-			return true;
-		}
+		// const FOnLoginUIClosedDelegate Delegate = FOnLoginUIClosedDelegate::CreateSP( this, &SShooterMenuWidget::HandleProfileUISwapClosed );
+		// if ( ShooterUIHelpers::Get().ProfileSwapUI(ControllerIndex, false, &Delegate) )
+		// {
+		// 	UShooterGameInstance* GameInstance = PlayerOwner.IsValid() ? Cast< UShooterGameInstance >( PlayerOwner->GetGameInstance() ) : nullptr;
+		//
+		// 	if ( GameInstance != nullptr )
+		// 	{
+		// 		GameInstance->SetIgnorePairingChangeForControllerId( ControllerIndex );
+		// 	}
+		// 	return true;
+		// }
 	}
 	return false;
 }
@@ -566,10 +567,10 @@ void SShooterMenuWidget::MenuGoBack(bool bSilent)
 	}
 	else
 	{
-#if SHOOTER_CONSOLE_UI
-		// Go back to the welcome screen.
-		HideMenu();
-#endif
+// #if SHOOTER_CONSOLE_UI
+// 		// Go back to the welcome screen.
+// 		HideMenu();
+// #endif
 	}
 }
 

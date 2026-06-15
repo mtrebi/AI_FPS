@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
+#include "EQS/DistanceChosenPositionsTest.h"
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
 #include "EnvironmentQuery/Tests/EnvQueryTest_Trace.h"
 #include "Bots/ShooterAIController.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/DistanceChosenPositionsTest.h"
+#include "Others/HelperMethods.h"
 
 UDistanceChosenPositionsTest::UDistanceChosenPositionsTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {

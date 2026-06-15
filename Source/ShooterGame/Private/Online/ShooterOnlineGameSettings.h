@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "OnlineSessionSettings.h"
+
 /**
  * General session settings for a Shooter game
  */

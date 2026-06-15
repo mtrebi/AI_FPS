@@ -1,10 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/PlayerDistanceTest.h"
+
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/PlayerDistanceTest.h"
+#include "Others/HelperMethods.h"
+#include "EQS/PlayerDistanceTest.h"
 
 UPlayerDistanceTest::UPlayerDistanceTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {

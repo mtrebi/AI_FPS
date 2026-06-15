@@ -1,5 +1,6 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "Engine/DamageEvents.h"
 #include "ShooterTypes.generated.h"
 #pragma once
 

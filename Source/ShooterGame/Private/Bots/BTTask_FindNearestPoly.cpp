@@ -1,14 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "ShooterGame.h"
 #include "Bots/BTTask_FindNearestPoly.h"
+#include "ShooterGame.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/Blackboard/BlackboardKeyAllTypes.h"
 #include "Bots/ShooterAIController.h"
 #include "Bots/ShooterBot.h"
 #include "NavigationSystem.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
+#include "Online/ShooterGameMode.h"
+#include "Navigation/MyRecastNavMesh.h"
 
 UBTTask_FindNearestPoly::UBTTask_FindNearestPoly(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

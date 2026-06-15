@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/CloserHighInfluencePositionsTest.h"
+
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
 #include "Bots/ShooterAIController.h"
 #include "Bots/ShooterBot.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/CloserHighInfluencePositionsTest.h"
+#include "Others/HelperMethods.h"
 
 
 UCloserHighInfluencePositionsTest::UCloserHighInfluencePositionsTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)

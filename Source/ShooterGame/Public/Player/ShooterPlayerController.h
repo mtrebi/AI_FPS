@@ -282,7 +282,7 @@ public:
 	virtual void GameHasEnded(class AActor* EndGameFocus = NULL, bool bIsWinner = false) override;	
 
 	/** Return the client to the main menu gracefully.  ONLY sets GI state. */
-	void ClientReturnToMainMenu_Implementation(const FString& ReturnReason) override;
+	//void ClientReturnToMainMenu_Implementation(const FString& ReturnReason) override;
 
 	/** Causes the player to commit suicide */
 	UFUNCTION(exec)

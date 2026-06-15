@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
-#include "Public/Navigation/MyTexture2D.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
+#include "Navigation/MyTexture2D.h"
+#include "Navigation/MyRecastNavMesh.h"
 #include "MyInfluenceMap.generated.h"
 
 struct InfluenceTile {

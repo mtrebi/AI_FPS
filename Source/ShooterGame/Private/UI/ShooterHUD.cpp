@@ -1,7 +1,7 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "UI/ShooterHUD.h"
+#include "ShooterGame.h"
 #include "SShooterScoreboardWidget.h"
 #include "SChatWidget.h"
 #include "Engine/ViewportSplitScreen.h"
@@ -160,7 +160,7 @@ void AShooterHUD::DrawWeaponHUD()
 
 			const float LeftCornerWidth = 60;
 
-			FCanvasTileItem TileItem(FVector2D( PriClipPosX - Offset * ScaleUI, PriWeapBgPosY ), PrimaryWeapBg.Texture->Resource, 
+			FCanvasTileItem TileItem(FVector2D( PriClipPosX - Offset * ScaleUI, PriWeapBgPosY ), PrimaryWeapBg.Texture->GetResource(), 
 				FVector2D( LeftCornerWidth * ScaleUI, PrimaryWeapBg.VL * ScaleUI ),	 FLinearColor::White);
 			MakeUV(PrimaryWeapBg, TileItem.UV0, TileItem.UV1, PrimaryWeapBg.U, PrimaryWeapBg.V, LeftCornerWidth, PrimaryWeapBg.VL);  
 			TileItem.BlendMode = SE_BLEND_Translucent;
@@ -259,7 +259,7 @@ void AShooterHUD::DrawWeaponHUD()
 
 			//draw background in two parts to match number of clip icons
 			const float LeftCornerWidth = 38;
-			FCanvasTileItem TileItem(FVector2D(  SecClipPosX - Offset * ScaleUI, SecWeapBgPosY ), SecondaryWeapBg.Texture->Resource, 
+			FCanvasTileItem TileItem(FVector2D(  SecClipPosX - Offset * ScaleUI, SecWeapBgPosY ), SecondaryWeapBg.Texture->GetResource(), 
 			FVector2D( LeftCornerWidth * ScaleUI, SecondaryWeapBg.VL * ScaleUI ), FLinearColor::White);
 			MakeUV(SecondaryWeapBg, TileItem.UV0, TileItem.UV1, SecondaryWeapBg.U, SecondaryWeapBg.V, LeftCornerWidth, SecondaryWeapBg.VL);  
 			TileItem.BlendMode = SE_BLEND_Translucent;
@@ -324,7 +324,7 @@ void AShooterHUD::DrawHealth()
 	Canvas->DrawIcon(HealthBarBg, HealthPosX, HealthPosY, ScaleUI);
 	const float HealthAmount =  FMath::Min(1.0f,MyPawn->Health / MyPawn->GetMaxHealth());
 
-	FCanvasTileItem TileItem(FVector2D(HealthPosX,HealthPosY), HealthBar.Texture->Resource, 
+	FCanvasTileItem TileItem(FVector2D(HealthPosX,HealthPosY), HealthBar.Texture->GetResource(), 
 							 FVector2D(HealthBar.UL * HealthAmount  * ScaleUI, HealthBar.VL * ScaleUI), FLinearColor::White);
 	MakeUV(HealthBar, TileItem.UV0, TileItem.UV1, HealthBar.U, HealthBar.V, HealthBar.UL * HealthAmount, HealthBar.VL);  
 	TileItem.BlendMode = SE_BLEND_Translucent;
@@ -533,7 +533,7 @@ void AShooterHUD::DrawHUD()
 
 		// Full screen low health overlay
 		Canvas->PopSafeZoneTransform();
-		FCanvasTileItem TileItem( FVector2D( 0, 0 ), LowHealthOverlayTexture->Resource, FVector2D( Canvas->ClipX, Canvas->ClipY ), FLinearColor( 1.0f, 0.0f, 0.0f, AlphaValue ) );
+		FCanvasTileItem TileItem( FVector2D( 0, 0 ), LowHealthOverlayTexture->GetResource(), FVector2D( Canvas->ClipX, Canvas->ClipY ), FLinearColor( 1.0f, 0.0f, 0.0f, AlphaValue ) );
 		TileItem.BlendMode = SE_BLEND_Translucent;
 		Canvas->DrawItem( TileItem );
 		Canvas->ApplySafeZoneTransform();
@@ -550,11 +550,11 @@ void AShooterHUD::DrawHUD()
 			if(SessionSubsystem.IsValid())
 			{
 				FNamedOnlineSession * Session = SessionSubsystem->GetNamedSession(NAME_GameSession);
-				if(Session && Session->SessionInfo.IsValid())
-				{
-					NetModeDesc += TEXT("\nSession: ");
-					NetModeDesc += Session->GetSessionIdStr();
-				}
+				// if(Session && Session->SessionInfo.IsValid())
+				// {
+				// 	NetModeDesc += TEXT("\nSession: ");
+				// 	NetModeDesc += Session->GetSessionIdStr();
+				// }
 			}
 
 		}

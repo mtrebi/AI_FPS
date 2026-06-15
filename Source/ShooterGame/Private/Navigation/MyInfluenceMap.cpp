@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Navigation/MyInfluenceMap.h"
 #include "ShooterGame.h"
 #include <algorithm>
 using namespace std;
-#include "Public/Navigation/MyInfluenceMap.h"
 
 void AMyInfluenceMap::Initialize() {
 	// Setup basic influence map
