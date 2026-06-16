@@ -11,6 +11,14 @@ namespace
 	const FString CustomMatchKeyword("Custom");
 }
 
+// ShooterGameSession.cpp (or a shared header)
+#define SETTING_GAMEMODE FName(TEXT("GAMEMODE"))
+#define SETTING_MAPNAME FName(TEXT("MAPNAME"))
+#define SETTING_MATCHING_HOPPER FName(TEXT("MATCHMAKING_HOPPER"))
+#define SETTING_MATCHING_TIMEOUT FName(TEXT("MATCHMAKING_TIMEOUT"))
+#define SETTING_SESSION_TEMPLATE_NAME FName(TEXT("SESSIONTEMPLATENAME"))
+#define SEARCH_KEYWORDS TEXT("KEYWORDS")
+
 AShooterGameSession::AShooterGameSession(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -213,16 +221,16 @@ bool AShooterGameSession::HostSession(TSharedPtr<const FUniqueNetId> UserId, FNa
 		if (Sessions.IsValid() && CurrentSessionParams.UserId.IsValid())
 		{
 			HostSettings = MakeShareable(new FShooterOnlineSessionSettings(bIsLAN, bIsPresence, MaxPlayers));
-			// HostSettings->Set(SETTING_GAMEMODE, GameType, EOnlineDataAdvertisementType::ViaOnlineService);
-			// HostSettings->Set(SETTING_MAPNAME, MapName, EOnlineDataAdvertisementType::ViaOnlineService);
-			// HostSettings->Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
-			// HostSettings->Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
-			// HostSettings->Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
+			HostSettings->Set(SETTING_GAMEMODE, GameType, EOnlineDataAdvertisementType::ViaOnlineService);
+			HostSettings->Set(SETTING_MAPNAME, MapName, EOnlineDataAdvertisementType::ViaOnlineService);
+			HostSettings->Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
+			HostSettings->Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
+			HostSettings->Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
 
 #if !PLATFORM_SWITCH
 			// On Switch, we don't have room for this in the session data (and it's not used anyway when searching), so there's no need to add it.
 			// Can be readded if the buffer size increases.
-			//HostSettings->Set(SEARCH_KEYWORDS, CustomMatchKeyword, EOnlineDataAdvertisementType::ViaOnlineService);
+			HostSettings->Set(SEARCH_KEYWORDS, CustomMatchKeyword, EOnlineDataAdvertisementType::ViaOnlineService);
 #endif
 
 			OnCreateSessionCompleteDelegateHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(OnCreateSessionCompleteDelegate);
@@ -311,6 +319,13 @@ void AShooterGameSession::ChooseBestSession()
 	// 	CurrentSessionParams.BestSessionIdx = SessionIndex;
 	// 	return;
 	// }
+	
+	int32 SessionIndex = CurrentSessionParams.BestSessionIdx+1;
+	if (SessionIndex < SearchSettings->SearchResults.Num())
+	{
+		CurrentSessionParams.BestSessionIdx = SessionIndex;
+		return;
+	}
 
 	CurrentSessionParams.BestSessionIdx = -1;
 }
@@ -363,7 +378,7 @@ void AShooterGameSession::FindSessions(TSharedPtr<const FUniqueNetId> UserId, FN
 		if (Sessions.IsValid() && CurrentSessionParams.UserId.IsValid())
 		{
 			SearchSettings = MakeShareable(new FShooterOnlineSearchSettings(bIsLAN, bIsPresence));
-			//SearchSettings->QuerySettings.Set(SEARCH_KEYWORDS, CustomMatchKeyword, EOnlineComparisonOp::Equals);
+			SearchSettings->QuerySettings.Set(SEARCH_KEYWORDS, CustomMatchKeyword, EOnlineComparisonOp::Equals);
 
 			TSharedRef<FOnlineSessionSearch> SearchSettingsRef = SearchSettings.ToSharedRef();
 
@@ -476,11 +491,11 @@ void AShooterGameSession::RegisterServer()
 		if (SessionInt.IsValid())
 		{
 			TSharedPtr<class FShooterOnlineSessionSettings> ShooterHostSettings = MakeShareable(new FShooterOnlineSessionSettings(false, false, 16));
-			// ShooterHostSettings->Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
-			// ShooterHostSettings->Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
-			// ShooterHostSettings->Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
-			// ShooterHostSettings->Set(SETTING_GAMEMODE, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::ViaOnlineService);
-			// ShooterHostSettings->Set(SETTING_MAPNAME, GetWorld()->GetMapName(), EOnlineDataAdvertisementType::ViaOnlineService);
+			ShooterHostSettings->Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
+			ShooterHostSettings->Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
+			ShooterHostSettings->Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
+			ShooterHostSettings->Set(SETTING_GAMEMODE, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::ViaOnlineService);
+			ShooterHostSettings->Set(SETTING_MAPNAME, GetWorld()->GetMapName(), EOnlineDataAdvertisementType::ViaOnlineService);
 			ShooterHostSettings->bAllowInvites = true;
 			ShooterHostSettings->bIsDedicated = true;
 			if (FParse::Param(FCommandLine::Get(), TEXT("forcelan")))

@@ -29,6 +29,15 @@ static const int DefaultTDMMap = 1;
 static const int DefaultFFAMap = 0; 
 static const float QuickmatchUIAnimationTimeDuration = 30.f;
 
+#define SETTING_GAMEMODE FName(TEXT("GAMEMODE"))
+#define SETTING_MAPNAME FName(TEXT("MAPNAME"))
+#define SETTING_MATCHING_HOPPER FName(TEXT("MATCHMAKING_HOPPER"))
+#define SETTING_MATCHING_TIMEOUT FName(TEXT("MATCHMAKING_TIMEOUT"))
+#define SETTING_SESSION_TEMPLATE_NAME FName(TEXT("SESSIONTEMPLATENAME"))
+
+#define SEARCH_XBOX_LIVE_HOPPER_NAME FName(TEXT("HOPPERNAM"))
+#define SEARCH_XBOX_LIVE_SESSION_TEMPLATE_NAME FName(TEXT("SESSIONTEMPLATENAME"))
+
 //use an EMap index, get back the ChunkIndex that map should be part of.
 //Instead of this mapping we should really use the AssetRegistry to query for chunk mappings, but maps aren't members of the AssetRegistry yet.
 static const int ChunkMapping[] = { 1, 2 };
@@ -67,17 +76,17 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 	GameInstance = _GameInstance;
 	PlayerOwner = _PlayerOwner;
 
-	//OnCancelMatchmakingCompleteDelegate = FOnCancelMatchmakingCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnCancelMatchmakingComplete);
-	//OnMatchmakingCompleteDelegate = FOnMatchmakingCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnMatchmakingComplete);
+	OnCancelMatchmakingCompleteDelegate = FOnCancelMatchmakingCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnCancelMatchmakingComplete);
+	OnMatchmakingCompleteDelegate = FOnMatchmakingCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnMatchmakingComplete);
 	
 	// read user settings
-// #if SHOOTER_CONSOLE_UI
-// 	bIsLanMatch = FParse::Param(FCommandLine::Get(), TEXT("forcelan"));
-// #else
-// 	UShooterGameUserSettings* const UserSettings = CastChecked<UShooterGameUserSettings>(GEngine->GetGameUserSettings());
-// 	bIsLanMatch = UserSettings->IsLanMatch();
-// 	bIsDedicatedServer = UserSettings->IsDedicatedServer();
-// #endif
+#if SHOOTER_CONSOLE_UI
+	bIsLanMatch = FParse::Param(FCommandLine::Get(), TEXT("forcelan"));
+#else
+	UShooterGameUserSettings* const UserSettings = CastChecked<UShooterGameUserSettings>(GEngine->GetGameUserSettings());
+	bIsLanMatch = UserSettings->IsLanMatch();
+	bIsDedicatedServer = UserSettings->IsDedicatedServer();
+#endif
 
 	BotsCountOpt = 1;
 	bIsRecordingDemo = false;
@@ -136,10 +145,10 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 		TSharedPtr<FShooterMenuItem> RootMenuItem;
 
 				
-		// SAssignNew(SplitScreenLobbyWidget, SShooterSplitScreenLobby)
-		// 	.PlayerOwner(GetPlayerOwner())
-		// 	.OnCancelClicked(FOnClicked::CreateSP(this, &FShooterMainMenu::OnSplitScreenBackedOut)) 
-		// 	.OnPlayClicked(FOnClicked::CreateSP(this, &FShooterMainMenu::OnSplitScreenPlay));
+		SAssignNew(SplitScreenLobbyWidget, SShooterSplitScreenLobby)
+			.PlayerOwner(GetPlayerOwner())
+			.OnCancelClicked(FOnClicked::CreateSP(this, &FShooterMainMenu::OnSplitScreenBackedOut)) 
+			.OnPlayClicked(FOnClicked::CreateSP(this, &FShooterMainMenu::OnSplitScreenPlay));
 
 		FText Msg = LOCTEXT("No matches could be found", "No matches could be found");
 		FText OKButtonString = NSLOCTEXT("DialogButtons", "OKAY", "OK");
@@ -184,13 +193,12 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 
 		// HOST ONLINE menu option
 		{
-			//MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("HostCustom", "HOST CUSTOM"), this, &FShooterMainMenu::OnHostOnlineSelected);
+			MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("HostCustom", "HOST CUSTOM"), this, &FShooterMainMenu::OnHostOnlineSelected);
 
 			// submenu under "HOST ONLINE"
-			//MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
-
-			//TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
-			//NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
+			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
+			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSPV2(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
+			NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
 
 			HostOnlineMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
 		}
@@ -198,7 +206,7 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 		// JOIN menu option
 		{
 			// JOIN menu option
-			//MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("FindCustom", "FIND CUSTOM"), this, &FShooterMainMenu::OnJoinServer);
+			MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("FindCustom", "FIND CUSTOM"), this, &FShooterMainMenu::OnJoinServer);
 
 			// Server list widget that will be called up if appropriate
 			MenuHelper::AddCustomMenuItem(JoinServerItem,SAssignNew(ServerListWidget,SShooterServerList).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
@@ -206,18 +214,18 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 
 		// QUICK MATCH menu option
 		{
-			//MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("QuickMatch", "QUICK MATCH"), this, &FShooterMainMenu::OnQuickMatchSelected);
+			MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("QuickMatch", "QUICK MATCH"), this, &FShooterMainMenu::OnQuickMatchSelected);
 		}
 
 		// HOST OFFLINE menu option
 		{
-			//MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("PlayOffline", "PLAY OFFLINE"),this, &FShooterMainMenu::OnHostOfflineSelected);
+			MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("PlayOffline", "PLAY OFFLINE"),this, &FShooterMainMenu::OnHostOfflineSelected);
 
 			// submenu under "HOST OFFLINE"
-			//MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
+			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
 
-			//TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
-			//NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
+			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSPV2(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
+			NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
 
 			HostOfflineMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
 		}
@@ -295,29 +303,29 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 		MenuItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Host", "HOST"));
 
 		// submenu under "host"
-		// MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("FFALong", "FREE FOR ALL"), this, &FShooterMainMenu::OnUIHostFreeForAll);
-		// MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnUIHostTeamDeathMatch);
+		 MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("FFALong", "FREE FOR ALL"), this, &FShooterMainMenu::OnUIHostFreeForAll);
+		 MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnUIHostTeamDeathMatch);
 
-		//TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);
-		//NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;
+		TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);
+		NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;
 
 		HostOnlineMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
 
-		//HostLANItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("LanMatch", "LAN"), OnOffList, this, &FShooterMainMenu::LanMatchChanged);
+		HostLANItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("LanMatch", "LAN"), OnOffList, this, &FShooterMainMenu::LanMatchChanged);
 		HostLANItem->SelectedMultiChoice = bIsLanMatch;
 
-		//RecordDemoItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("RecordDemo", "Record Demo"), OnOffList, this, &FShooterMainMenu::RecordDemoChanged);
+		RecordDemoItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("RecordDemo", "Record Demo"), OnOffList, this, &FShooterMainMenu::RecordDemoChanged);
 		RecordDemoItem->SelectedMultiChoice = bIsRecordingDemo;
 
 		// JOIN menu option
 		MenuItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Join", "JOIN"));
 
 		// submenu under "join"
-		//MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("Server", "SERVER"), this, &FShooterMainMenu::OnJoinServer);
-		//JoinLANItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("LanMatch", "LAN"), OnOffList, this, &FShooterMainMenu::LanMatchChanged);
+		MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("Server", "SERVER"), this, &FShooterMainMenu::OnJoinServer);
+		JoinLANItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("LanMatch", "LAN"), OnOffList, this, &FShooterMainMenu::LanMatchChanged);
 		JoinLANItem->SelectedMultiChoice = bIsLanMatch;
 
-		//DedicatedItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("Dedicated", "Dedicated"), OnOffList, this, &FShooterMainMenu::DedicatedServerChanged);
+		DedicatedItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("Dedicated", "Dedicated"), OnOffList, this, &FShooterMainMenu::DedicatedServerChanged);
 		DedicatedItem->SelectedMultiChoice = bIsDedicatedServer;
 
 		// Server list widget that will be called up if appropriate
@@ -325,18 +333,18 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 #endif
 
 		// Leaderboards
-		//MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Leaderboards", "LEADERBOARDS"), this, &FShooterMainMenu::OnShowLeaderboard);
+		MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Leaderboards", "LEADERBOARDS"), this, &FShooterMainMenu::OnShowLeaderboard);
 		MenuHelper::AddCustomMenuItem(LeaderboardItem,SAssignNew(LeaderboardWidget,SShooterLeaderboard).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
 
 		// Purchases
-		//MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Store", "ONLINE STORE"), this, &FShooterMainMenu::OnShowOnlineStore);
+		MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Store", "ONLINE STORE"), this, &FShooterMainMenu::OnShowOnlineStore);
 		MenuHelper::AddCustomMenuItem(OnlineStoreItem, SAssignNew(OnlineStoreWidget, SShooterOnlineStore).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
 
 #if !SHOOTER_CONSOLE_UI
 
 		// Demos
 		{
-			//MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Demos", "DEMOS"), this, &FShooterMainMenu::OnShowDemoBrowser);
+			MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Demos", "DEMOS"), this, &FShooterMainMenu::OnShowDemoBrowser);
 			MenuHelper::AddCustomMenuItem(DemoBrowserItem,SAssignNew(DemoListWidget,SShooterDemoList).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
 		}
 #endif
@@ -352,7 +360,7 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 
 		// QUIT option (for PC)
 #if !SHOOTER_CONSOLE_UI
-		//MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Quit", "QUIT"), this, &FShooterMainMenu::OnUIQuit);
+		MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Quit", "QUIT"), this, &FShooterMainMenu::OnUIQuit);
 #endif
 
 		MenuWidget->CurrentMenuTitle = LOCTEXT("MainMenu","MAIN MENU");
@@ -371,7 +379,18 @@ void FShooterMainMenu::AddMenuToGameViewport()
 	{
 		UGameViewportClient* GVC = GEngine->GameViewport;
 		GVC->AddViewportWidgetContent(MenuWidgetContainer.ToSharedRef());
-		//GVC->SetCaptureMouseOnClick(EMouseCaptureMode::NoCapture);
+
+		// Set mouse mode via player controller
+		UWorld* World = GVC->GetWorld();
+		if (World)
+		{
+			APlayerController* PC = World->GetFirstPlayerController();
+			if (PC)
+			{
+				PC->SetShowMouseCursor(true);
+				PC->SetInputMode(FInputModeUIOnly());
+			}
+		}
 	}
 }
 
@@ -420,23 +439,23 @@ void FShooterMainMenu::Tick(float DeltaSeconds)
 		EMap SelectedMap = GetSelectedMap();
 		// use assetregistry when maps are added to it.
 		int32 MapChunk = ChunkMapping[(int)SelectedMap];
-		//EChunkLocation::Type ChunkLocation = ChunkInstaller->GetChunkLocation(MapChunk);
+		EChunkLocation::Type ChunkLocation = ChunkInstaller->GetPakchunkLocation(MapChunk);
 
 		FText UpdatedText;
 		bool bUpdateText = false;
-		// if (ChunkLocation == EChunkLocation::NotAvailable)
-		// {			
-		// 	float PercentComplete = FMath::Min(ChunkInstaller->GetChunkProgress(MapChunk, EChunkProgressReportingType::PercentageComplete), 100.0f);									
-		// 	UpdatedText = FText::FromString(FString::Printf(TEXT("%s %4.0f%%"),*LOCTEXT("SELECTED_LEVEL", "Map").ToString(), PercentComplete));
-		// 	bUpdateText = true;
-		// 	bShowingDownloadPct = true;
-		// }
-		// else if (bShowingDownloadPct)
-		// {
-		// 	UpdatedText = LOCTEXT("SELECTED_LEVEL", "Map");			
-		// 	bUpdateText = true;
-		// 	bShowingDownloadPct = false;			
-		// }
+		if (ChunkLocation == EChunkLocation::NotAvailable)
+		{			
+			float PercentComplete = FMath::Min(ChunkInstaller->GetChunkProgress(MapChunk, EChunkProgressReportingType::PercentageComplete), 100.0f);									
+			UpdatedText = FText::FromString(FString::Printf(TEXT("%s %4.0f%%"),*LOCTEXT("SELECTED_LEVEL", "Map").ToString(), PercentComplete));
+			bUpdateText = true;
+			bShowingDownloadPct = true;
+		}
+		else if (bShowingDownloadPct)
+		{
+			UpdatedText = LOCTEXT("SELECTED_LEVEL", "Map");			
+			bUpdateText = true;
+			bShowingDownloadPct = false;			
+		}
 
 		if (bUpdateText)
 		{
@@ -498,7 +517,7 @@ void FShooterMainMenu::OnQuickMatchSelected()
 	}
 #endif
 
-	//StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayOnlineQuickMatch));
+	StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayOnlineQuickMatch));
 }
 
 void FShooterMainMenu::OnUserCanPlayOnlineQuickMatch(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults)
@@ -563,15 +582,15 @@ void FShooterMainMenu::BeginQuickMatchSearch()
 	}
 
 	QuickMatchSearchSettings = MakeShareable(new FShooterOnlineSearchSettings(false, true));
-	//QuickMatchSearchSettings->QuerySettings.Set(SEARCH_XBOX_LIVE_HOPPER_NAME, FString("TeamDeathmatch"), EOnlineComparisonOp::Equals);
-	//QuickMatchSearchSettings->QuerySettings.Set(SEARCH_XBOX_LIVE_SESSION_TEMPLATE_NAME, FString("MatchSession"), EOnlineComparisonOp::Equals);
+	QuickMatchSearchSettings->QuerySettings.Set(SEARCH_XBOX_LIVE_HOPPER_NAME, FString("TeamDeathmatch"), EOnlineComparisonOp::Equals);
+	QuickMatchSearchSettings->QuerySettings.Set(SEARCH_XBOX_LIVE_SESSION_TEMPLATE_NAME, FString("MatchSession"), EOnlineComparisonOp::Equals);
 	QuickMatchSearchSettings->TimeoutInSeconds = 120.0f;
 
 	FShooterOnlineSessionSettings SessionSettings(false, true, 8);
-	// SessionSettings.Set(SETTING_GAMEMODE, FString("TDM"), EOnlineDataAdvertisementType::ViaOnlineService);
-	// SessionSettings.Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
-	// SessionSettings.Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
-	// SessionSettings.Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
+	SessionSettings.Set(SETTING_GAMEMODE, FString("TDM"), EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionSettings.Set(SETTING_MATCHING_HOPPER, FString("TeamDeathmatch"), EOnlineDataAdvertisementType::DontAdvertise);
+	SessionSettings.Set(SETTING_MATCHING_TIMEOUT, 120.0f, EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionSettings.Set(SETTING_SESSION_TEMPLATE_NAME, FString("GameSession"), EOnlineDataAdvertisementType::DontAdvertise);
 
 	auto QuickMatchSearchSettingsRef = QuickMatchSearchSettings.ToSharedRef();
 	
@@ -690,7 +709,7 @@ void FShooterMainMenu::OnSplitScreenSelectedHostOnline()
 	}
 #endif
 
-	//StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayHostOnline));
+	StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayHostOnline));
 }
 void FShooterMainMenu::StartOnlinePrivilegeTask(const IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate& Delegate)
 {
@@ -1094,7 +1113,7 @@ void FShooterMainMenu::OnUIHostFreeForAll()
 	if (World && GetPlayerOwnerControllerId() != -1)
 	{
 	const FShooterMenuSoundsStyle& MenuSounds = FShooterStyle::Get().GetWidgetStyle<FShooterMenuSoundsStyle>("DefaultShooterMenuSoundsStyle");
-		//MenuHelper::PlaySoundAndCall(World, MenuSounds.StartGameSound, GetPlayerOwnerControllerId(), this, &FShooterMainMenu::HostFreeForAll);
+		MenuHelper::PlaySoundAndCall(World, MenuSounds.StartGameSound, GetPlayerOwnerControllerId(), this, &FShooterMainMenu::HostFreeForAll);
 	}
 }
 
@@ -1125,7 +1144,7 @@ void FShooterMainMenu::OnUIHostTeamDeathMatch()
 	if (World && GetPlayerOwnerControllerId() != -1)
 	{
 	const FShooterMenuSoundsStyle& MenuSounds = FShooterStyle::Get().GetWidgetStyle<FShooterMenuSoundsStyle>("DefaultShooterMenuSoundsStyle");
-		//MenuHelper::PlaySoundAndCall(World, MenuSounds.StartGameSound, GetPlayerOwnerControllerId(), this, &FShooterMainMenu::HostTeamDeathMatch);
+		MenuHelper::PlaySoundAndCall(World, MenuSounds.StartGameSound, GetPlayerOwnerControllerId(), this, &FShooterMainMenu::HostTeamDeathMatch);
 	}
 }
 
@@ -1231,7 +1250,7 @@ void FShooterMainMenu::OnJoinServer()
 	}
 #endif
 
-	//StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayOnlineJoin));
+	StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayOnlineJoin));
 }
 
 void FShooterMainMenu::OnUserCanPlayOnlineJoin(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults)
@@ -1335,7 +1354,7 @@ void FShooterMainMenu::OnUIQuit()
 	if (World != NULL && GetPlayerOwnerControllerId() != -1)
 	{
 		FSlateApplication::Get().PlaySound(MenuSounds.ExitGameSound, GetPlayerOwnerControllerId());
-		//MenuHelper::PlaySoundAndCall(World, MenuSounds.ExitGameSound, GetPlayerOwnerControllerId(), this, &FShooterMainMenu::Quit);
+		MenuHelper::PlaySoundAndCall(World, MenuSounds.ExitGameSound, GetPlayerOwnerControllerId(), this, &FShooterMainMenu::Quit);
 	}
 }
 
@@ -1375,11 +1394,11 @@ bool FShooterMainMenu::IsMapReady() const
 		EMap SelectedMap = GetSelectedMap();
 		// should use the AssetRegistry as soon as maps are added to the AssetRegistry
 		int32 MapChunk = ChunkMapping[(int)SelectedMap];
-		//EChunkLocation::Type ChunkLocation = ChunkInstaller->GetChunkLocation(MapChunk);
-		// if (ChunkLocation == EChunkLocation::NotAvailable)
-		// {			
-		// 	bReady = false;
-		// }
+		EChunkLocation::Type ChunkLocation = ChunkInstaller->GetPakchunkLocation(MapChunk);
+		 if (ChunkLocation == EChunkLocation::NotAvailable)
+		 {			
+		 	bReady = false;
+		 }
 	}
 	return bReady;
 }

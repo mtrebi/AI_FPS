@@ -14,17 +14,22 @@ struct FShooterGameLoadingScreenBrush : public FSlateDynamicImageBrush, public F
 	{
 		SetResourceObject(LoadObject<UObject>( nullptr, *InTextureName.ToString() ));
 	}
-
-	// Ensure Slate/GC know about the UObject resource used by this brush
-	virtual void AddReferencedObjects(FReferenceCollector& Collector) override
+	
+	virtual void AddReferencedObjects(FReferenceCollector& Collector)
 	{
-		// Let the base brush add its references first
 		FSlateBrush::AddReferencedObjects(Collector);
-
-		// Explicitly add our resource object so the GC won't collect it
-		UObject* Resource = GetResourceObject();
-		Collector.AddReferencedObject(Resource);
 	}
+
+	// // Ensure Slate/GC know about the UObject resource used by this brush
+	// virtual void AddReferencedObjects(FReferenceCollector& Collector) override
+	// {
+	// 	// Let the base brush add its references first
+	// 	FSlateBrush::AddReferencedObjects(Collector);
+	//
+	// 	// Explicitly add our resource object so the GC won't collect it
+	// 	UObject* Resource = GetResourceObject();
+	// 	Collector.AddReferencedObject(Resource);
+	// }
 
 	// Provide the required referencer name
 	virtual FString GetReferencerName() const override

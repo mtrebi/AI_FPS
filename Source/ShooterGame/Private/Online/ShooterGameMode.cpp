@@ -195,10 +195,10 @@ void AShooterGameMode::FinishMatch()
 		// lock all pawns
 		// pawns are not marked as keep for seamless travel, so we will create new pawns on the next match rather than
 		// turning these back on.
-		// for (FConstPawnIterator It = GetWorld()->GetPawnIterator(); It; ++It)
-		// {
-		// 	(*It)->TurnOff();
-		// }
+		for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+		{
+			(*It)->TurnOff();
+		}
 
 		// set up to restart the match
 		MyGameState->RemainingTime = TimeBetweenMatches;
@@ -437,22 +437,22 @@ bool AShooterGameMode::IsSpawnpointPreferred(APlayerStart* SpawnPoint, AControll
 	if (MyPawn)
 	{
 		const FVector SpawnLocation = SpawnPoint->GetActorLocation();
-		// for (FConstPawnIterator It = GetWorld()->GetPawnIterator(); It; ++It)
-		// {
-		// 	ACharacter* OtherPawn = Cast<ACharacter>(*It);
-		// 	if (OtherPawn && OtherPawn != MyPawn)
-		// 	{
-		// 		const float CombinedHeight = (MyPawn->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + OtherPawn->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()) * 2.0f;
-		// 		const float CombinedRadius = MyPawn->GetCapsuleComponent()->GetScaledCapsuleRadius() + OtherPawn->GetCapsuleComponent()->GetScaledCapsuleRadius();
-		// 		const FVector OtherLocation = OtherPawn->GetActorLocation();
-		//
-		// 		// check if player start overlaps this pawn
-		// 		if (FMath::Abs(SpawnLocation.Z - OtherLocation.Z) < CombinedHeight && (SpawnLocation - OtherLocation).Size2D() < CombinedRadius)
-		// 		{
-		// 			return false;
-		// 		}
-		// 	}
-		// }
+		for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+		{
+			ACharacter* OtherPawn = Cast<ACharacter>(*It);
+			if (OtherPawn && OtherPawn != MyPawn)
+			{
+				const float CombinedHeight = (MyPawn->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + OtherPawn->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()) * 2.0f;
+				const float CombinedRadius = MyPawn->GetCapsuleComponent()->GetScaledCapsuleRadius() + OtherPawn->GetCapsuleComponent()->GetScaledCapsuleRadius();
+				const FVector OtherLocation = OtherPawn->GetActorLocation();
+		
+				// check if player start overlaps this pawn
+				if (FMath::Abs(SpawnLocation.Z - OtherLocation.Z) < CombinedHeight && (SpawnLocation - OtherLocation).Size2D() < CombinedRadius)
+				{
+					return false;
+				}
+			}
+		}
 	}
 	else
 	{

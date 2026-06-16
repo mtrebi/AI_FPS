@@ -105,7 +105,7 @@ void FShooterRecentlyMet::UpdateRecentlyMet(int32 NewOwnerIndex)
 		MaxRecentlyMetIndex = PlayerArray.Num() - 1;
 	}
 
-//	MenuHelper::AddMenuItemSP(RecentlyMetItem, LOCTEXT("Close", "CLOSE"), this, &FShooterRecentlyMet::OnApplySettings);
+	MenuHelper::AddMenuItemSP(RecentlyMetItem, LOCTEXT("Close", "CLOSE"), this, &FShooterRecentlyMet::OnApplySettings);
 }
 
 void FShooterRecentlyMet::IncrementRecentlyMetCounter()

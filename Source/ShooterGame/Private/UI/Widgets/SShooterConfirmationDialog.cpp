@@ -151,46 +151,46 @@ FReply SShooterConfirmationDialog::ExecuteConfirm(const int32 UserIndex)
 	if (OnConfirm.IsBound())
 	{
 		//these two cases should be combined when we move to using PlatformUserIDs rather than ControllerIDs.
-// #if PLATFORM_PS4
-// 		bool bExecute = false;
-// 		// For controller reconnection, bind the confirming controller to the owner of this dialog
-// 		if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
-// 		{
-// 			const auto OnlineSub = IOnlineSubsystem::Get();
-// 			if (OnlineSub)
-// 			{
-// 				const auto IdentityInterface = OnlineSub->GetIdentityInterface();
-// 				if (IdentityInterface.IsValid())
-// 				{
-// 					TSharedPtr<const FUniqueNetId> IncomingUserId = IdentityInterface->GetUniquePlayerId(UserIndex);
-// 					FUniqueNetIdRepl DisconnectedId = PlayerOwner->GetCachedUniqueNetId();
-//
-// 					if (*IncomingUserId == *DisconnectedId)
-// 					{
-// 						PlayerOwner->SetControllerId(UserIndex);
-// 						bExecute = true;
-// 					}
-// 				}
-// 			}
-// 		}
-// 		else
-// 		{
-// 			bExecute = true;
-// 		}
-//
-// 		if (bExecute)
-// 		{
-// 			return OnConfirm.Execute();
-// 		}
-// #else
-// 		// For controller reconnection, bind the confirming controller to the owner of this dialog
-// 		if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
-// 		{
-// 			PlayerOwner->SetControllerId(UserIndex);
-// 		}
-//
-// 		return OnConfirm.Execute();
-// #endif
+#if PLATFORM_PS4
+		bool bExecute = false;
+		// For controller reconnection, bind the confirming controller to the owner of this dialog
+		if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
+		{
+			const auto OnlineSub = IOnlineSubsystem::Get();
+			if (OnlineSub)
+			{
+				const auto IdentityInterface = OnlineSub->GetIdentityInterface();
+				if (IdentityInterface.IsValid())
+				{
+					TSharedPtr<const FUniqueNetId> IncomingUserId = IdentityInterface->GetUniquePlayerId(UserIndex);
+					FUniqueNetIdRepl DisconnectedId = PlayerOwner->GetCachedUniqueNetId();
+
+					if (*IncomingUserId == *DisconnectedId)
+					{
+						PlayerOwner->SetControllerId(UserIndex);
+						bExecute = true;
+					}
+				}
+			}
+		}
+		else
+		{
+			bExecute = true;
+		}
+
+		if (bExecute)
+		{
+			return OnConfirm.Execute();
+		}
+#else
+		// For controller reconnection, bind the confirming controller to the owner of this dialog
+		if (DialogType == EShooterDialogType::ControllerDisconnected && PlayerOwner != nullptr)
+		{
+			PlayerOwner->SetControllerId(UserIndex);
+		}
+
+		return OnConfirm.Execute();
+#endif
 	}
 
 	return FReply::Unhandled();

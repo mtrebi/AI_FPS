@@ -15,11 +15,11 @@
 
 #define LOCTEXT_NAMESPACE "SShooterMenuWidget"
 
-// #if PLATFORM_XBOXONE
-// #define PROFILE_SWAPPING	1
-// #else
-// #define PROFILE_SWAPPING	0
-// #endif
+#if PLATFORM_XBOXONE
+#define PROFILE_SWAPPING	1
+#else
+#define PROFILE_SWAPPING	0
+#endif
 
 void SShooterMenuWidget::Construct(const FArguments& InArgs)
 {
@@ -224,13 +224,12 @@ FMargin SShooterMenuWidget::GetProfileSwapOffset() const
 
 bool SShooterMenuWidget::IsProfileSwapActive() const
 {
-// #if PROFILE_SWAPPING
-// 	// Dont' show if ingame or not on the main menu screen
-// 	return !bGameMenu && MenuHistory.Num() == 0 ? true : false;
-// #else
-// 	return false;
-// #endif
+#if PROFILE_SWAPPING
+	// Dont' show if ingame or not on the main menu screen
+	return !bGameMenu && MenuHistory.Num() == 0 ? true : false;
+#else
 	return false;
+#endif
 }
 
 EVisibility SShooterMenuWidget::GetProfileSwapVisibility() const
@@ -238,21 +237,21 @@ EVisibility SShooterMenuWidget::GetProfileSwapVisibility() const
 	return IsProfileSwapActive() ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
-bool SShooterMenuWidget::ProfileUISwap(const int ControllerIndex) const
+bool SShooterMenuWidget::ProfileUISwap(const int ControllerIndex)
 {
 	if(IsProfileSwapActive())
 	{
-		// const FOnLoginUIClosedDelegate Delegate = FOnLoginUIClosedDelegate::CreateSP( this, &SShooterMenuWidget::HandleProfileUISwapClosed );
-		// if ( ShooterUIHelpers::Get().ProfileSwapUI(ControllerIndex, false, &Delegate) )
-		// {
-		// 	UShooterGameInstance* GameInstance = PlayerOwner.IsValid() ? Cast< UShooterGameInstance >( PlayerOwner->GetGameInstance() ) : nullptr;
-		//
-		// 	if ( GameInstance != nullptr )
-		// 	{
-		// 		GameInstance->SetIgnorePairingChangeForControllerId( ControllerIndex );
-		// 	}
-		// 	return true;
-		// }
+		const FOnLoginUIClosedDelegate Delegate = FOnLoginUIClosedDelegate::CreateSP( this, &SShooterMenuWidget::HandleProfileUISwapClosed );
+		if ( ShooterUIHelpers::Get().ProfileSwapUI(ControllerIndex, false, &Delegate) )
+		{
+			UShooterGameInstance* GameInstance = PlayerOwner.IsValid() ? Cast< UShooterGameInstance >( PlayerOwner->GetGameInstance() ) : nullptr;
+		
+			if ( GameInstance != nullptr )
+			{
+				GameInstance->SetIgnorePairingChangeForControllerId( ControllerIndex );
+			}
+			return true;
+		}
 	}
 	return false;
 }
@@ -567,10 +566,10 @@ void SShooterMenuWidget::MenuGoBack(bool bSilent)
 	}
 	else
 	{
-// #if SHOOTER_CONSOLE_UI
-// 		// Go back to the welcome screen.
-// 		HideMenu();
-// #endif
+#if SHOOTER_CONSOLE_UI
+		// Go back to the welcome screen.
+		HideMenu();
+#endif
 	}
 }
 

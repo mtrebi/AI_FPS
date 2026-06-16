@@ -52,10 +52,10 @@ void UShooterOnlineSessionClient::OnSessionUserInviteAccepted(
 	}
 }
 
-// void UShooterOnlineSessionClient::OnPlayTogetherEventReceived(int32 UserIndex, TArray<TSharedPtr<const FUniqueNetId>> UserIdList)
-// {	
-// 	if (UShooterGameInstance* const ShooterGameInstance = Cast<UShooterGameInstance>(GetGameInstance()))
-// 	{
-// 		ShooterGameInstance->OnPlayTogetherEventReceived(UserIndex, UserIdList);
-// 	}
-// }
+void UShooterOnlineSessionClient::OnPlayTogetherEventReceived(int32 UserIndex, TArray<TSharedPtr<const FUniqueNetId>> UserIdList)
+{	
+	if (UShooterGameInstance* const ShooterGameInstance = Cast<UShooterGameInstance>(GetGameInstance()))
+	{
+		ShooterGameInstance->OnPlayTogetherEventReceived(UserIndex, UserIdList);
+	}
+}

@@ -34,6 +34,7 @@ bool dtQueryFilter_Example::SetPlayerVisibility(const TArray<Triangle> VisibleAr
 ///  @param[in]		nextTile	The tile containing the next polygon. [opt]
 ///  @param[in]		nextPoly	The next polygon. [opt]
 
+//i dont know
 // float dtQueryFilter_Example::getVirtualCost(const float * pa, const float * pb, const dtPolyRef prevRef, const dtMeshTile * prevTile, const dtPoly * prevPoly, const dtPolyRef curRef, const dtMeshTile * curTile, const dtPoly * curPoly, const dtPolyRef nextRef, const dtMeshTile * nextTile, const dtPoly * nextPoly) const
 // {
 // 	const float cost = GetCustomCost(FVector2D(-pa[0], -pa[2]), FVector2D(-pb[0], -pb[2]));

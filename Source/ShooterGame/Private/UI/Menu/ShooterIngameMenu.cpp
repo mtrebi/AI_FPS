@@ -49,8 +49,8 @@ void FShooterIngameMenu::Construct(ULocalPlayer* _PlayerOwner)
 		// fixes TTP: 322267
 		TSharedPtr<FShooterMenuItem> MainMenuRoot = FShooterMenuItem::CreateRoot();
 		MainMenuItem = MenuHelper::AddMenuItem(MainMenuRoot,LOCTEXT("Main Menu", "MAIN MENU"));
-		//MenuHelper::AddMenuItemSP(MainMenuItem,LOCTEXT("No", "NO"), this, &FShooterIngameMenu::OnCancelExitToMain);
-		//MenuHelper::AddMenuItemSP(MainMenuItem,LOCTEXT("Yes", "YES"), this, &FShooterIngameMenu::OnConfirmExitToMain);		
+		MenuHelper::AddMenuItemSP(MainMenuItem,LOCTEXT("No", "NO"), this, &FShooterIngameMenu::OnCancelExitToMain);
+		MenuHelper::AddMenuItemSP(MainMenuItem,LOCTEXT("Yes", "YES"), this, &FShooterIngameMenu::OnConfirmExitToMain);		
 
 		ShooterOptions = MakeShareable(new FShooterOptions());
 		ShooterOptions->Construct(PlayerOwner);
@@ -60,31 +60,31 @@ void FShooterIngameMenu::Construct(ULocalPlayer* _PlayerOwner)
 		MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterOptions->CheatsItem.ToSharedRef());
 		MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterOptions->OptionsItem.ToSharedRef());
 
-// #if FRIENDS_SUPPORTED
-// 		if (GameInstance && GameInstance->GetOnlineMode() == EOnlineMode::Online)
-// 		{
-// #if !PLATFORM_XBOXONE
-// 			ShooterFriends = MakeShareable(new FShooterFriends());
-// 			ShooterFriends->Construct(PlayerOwner, OwnerUserIndex);
-// 			ShooterFriends->TellInputAboutKeybindings();
-// 			ShooterFriends->OnApplyChanges.BindSP(this, &FShooterIngameMenu::CloseSubMenu);
-//
-// 			MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterFriends->FriendsItem.ToSharedRef());
-//
-// 			ShooterRecentlyMet = MakeShareable(new FShooterRecentlyMet());
-// 			ShooterRecentlyMet->Construct(PlayerOwner, OwnerUserIndex);
-// 			ShooterRecentlyMet->TellInputAboutKeybindings();
-// 			ShooterRecentlyMet->OnApplyChanges.BindSP(this, &FShooterIngameMenu::CloseSubMenu);
-//
-// 			MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterRecentlyMet->RecentlyMetItem.ToSharedRef());
-// #endif		
-//
-// #if SHOOTER_CONSOLE_UI			
-// 			TSharedPtr<FShooterMenuItem> ShowInvitesItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Invite Players", "INVITE PLAYERS (via System UI)"));
-// 			ShowInvitesItem->OnConfirmMenuItem.BindRaw(this, &FShooterIngameMenu::OnShowInviteUI);		
-// #endif
-// 		}
-// #endif
+#if FRIENDS_SUPPORTED
+		if (GameInstance && GameInstance->GetOnlineMode() == EOnlineMode::Online)
+		{
+#if !PLATFORM_XBOXONE
+			ShooterFriends = MakeShareable(new FShooterFriends());
+			ShooterFriends->Construct(PlayerOwner, OwnerUserIndex);
+			ShooterFriends->TellInputAboutKeybindings();
+			ShooterFriends->OnApplyChanges.BindSP(this, &FShooterIngameMenu::CloseSubMenu);
+
+			MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterFriends->FriendsItem.ToSharedRef());
+
+			ShooterRecentlyMet = MakeShareable(new FShooterRecentlyMet());
+			ShooterRecentlyMet->Construct(PlayerOwner, OwnerUserIndex);
+			ShooterRecentlyMet->TellInputAboutKeybindings();
+			ShooterRecentlyMet->OnApplyChanges.BindSP(this, &FShooterIngameMenu::CloseSubMenu);
+
+			MenuHelper::AddExistingMenuItem(RootMenuItem, ShooterRecentlyMet->RecentlyMetItem.ToSharedRef());
+#endif		
+
+#if SHOOTER_CONSOLE_UI			
+			TSharedPtr<FShooterMenuItem> ShowInvitesItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Invite Players", "INVITE PLAYERS (via System UI)"));
+			ShowInvitesItem->OnConfirmMenuItem.BindRaw(this, &FShooterIngameMenu::OnShowInviteUI);		
+#endif
+		}
+#endif
 
 		if (FSlateApplication::Get().SupportsSystemHelp())
 		{
@@ -94,9 +94,9 @@ void FShooterIngameMenu::Construct(ULocalPlayer* _PlayerOwner)
 
 		MenuHelper::AddExistingMenuItem(RootMenuItem, MainMenuItem.ToSharedRef());
 				
-// #if !SHOOTER_CONSOLE_UI
-// 		MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Quit", "QUIT"), this, &FShooterIngameMenu::OnUIQuit);
-// #endif
+#if !SHOOTER_CONSOLE_UI
+		MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Quit", "QUIT"), this, &FShooterIngameMenu::OnUIQuit);
+#endif
 
 		GameMenuWidget->MainMenu = GameMenuWidget->CurrentMenu = RootMenuItem->SubMenu;
 		GameMenuWidget->OnMenuHidden.BindSP(this,&FShooterIngameMenu::DetachGameMenu);
@@ -278,7 +278,7 @@ void FShooterIngameMenu::OnUIQuit()
 	if (World)
 	{
 		const FShooterMenuSoundsStyle& MenuSounds = FShooterStyle::Get().GetWidgetStyle<FShooterMenuSoundsStyle>("DefaultShooterMenuSoundsStyle");
-		//MenuHelper::PlaySoundAndCall(World, MenuSounds.ExitGameSound, GetOwnerUserIndex(), this, &FShooterIngameMenu::Quit);
+		MenuHelper::PlaySoundAndCall(World, MenuSounds.ExitGameSound, GetOwnerUserIndex(), this, &FShooterIngameMenu::Quit);
 	}
 }
 

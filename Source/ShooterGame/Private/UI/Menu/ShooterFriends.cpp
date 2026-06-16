@@ -92,7 +92,7 @@ void FShooterFriends::UpdateFriends(int32 NewOwnerIndex)
 	}
 
 	LocalUserNum = NewOwnerIndex;
-	//OnlineFriendsPtr->ReadFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers), FOnReadFriendsListComplete::CreateSP(this, &FShooterFriends::OnFriendsUpdated));
+	OnlineFriendsPtr->ReadFriendsList(LocalUserNum, EFriendsLists::ToString(EFriendsLists::OnlinePlayers), FOnReadFriendsListComplete::CreateSP(this, &FShooterFriends::OnFriendsUpdated));
 }
 
 void FShooterFriends::OnFriendsUpdated(int32 /*unused*/, bool bWasSuccessful, const FString& FriendListName, const FString& ErrorString)
@@ -119,7 +119,7 @@ void FShooterFriends::OnFriendsUpdated(int32 /*unused*/, bool bWasSuccessful, co
 		MaxFriendIndex = Friends.Num() - 1;
 	}
 
-	//MenuHelper::AddMenuItemSP(FriendsItem, LOCTEXT("Close", "CLOSE"), this, &FShooterFriends::OnApplySettings);
+	MenuHelper::AddMenuItemSP(FriendsItem, LOCTEXT("Close", "CLOSE"), this, &FShooterFriends::OnApplySettings);
 }
 
 void FShooterFriends::IncrementFriendsCounter()

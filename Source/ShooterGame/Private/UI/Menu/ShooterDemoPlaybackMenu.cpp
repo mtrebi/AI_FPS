@@ -29,14 +29,14 @@ void FShooterDemoPlaybackMenu::Construct( ULocalPlayer* _PlayerOwner )
 		TSharedPtr<FShooterMenuItem> MainMenuRoot = FShooterMenuItem::CreateRoot();
 		MainMenuItem = MenuHelper::AddMenuItem(MainMenuRoot,LOCTEXT( "Main Menu", "MAIN MENU" ) );
 
-		//MenuHelper::AddMenuItemSP( MainMenuItem, LOCTEXT( "No", "NO" ), this, &FShooterDemoPlaybackMenu::OnCancelExitToMain );
-		//MenuHelper::AddMenuItemSP( MainMenuItem, LOCTEXT( "Yes", "YES" ), this, &FShooterDemoPlaybackMenu::OnConfirmExitToMain );
+		MenuHelper::AddMenuItemSP( MainMenuItem, LOCTEXT( "No", "NO" ), this, &FShooterDemoPlaybackMenu::OnCancelExitToMain );
+		MenuHelper::AddMenuItemSP( MainMenuItem, LOCTEXT( "Yes", "YES" ), this, &FShooterDemoPlaybackMenu::OnConfirmExitToMain );
 
 		MenuHelper::AddExistingMenuItem( RootMenuItem, MainMenuItem.ToSharedRef() );
 				
-// #if !SHOOTER_CONSOLE_UI
-// 		//MenuHelper::AddMenuItemSP( RootMenuItem, LOCTEXT("Quit", "QUIT"), this, &FShooterDemoPlaybackMenu::OnUIQuit );
-// #endif
+#if !SHOOTER_CONSOLE_UI
+		MenuHelper::AddMenuItemSP( RootMenuItem, LOCTEXT("Quit", "QUIT"), this, &FShooterDemoPlaybackMenu::OnUIQuit );
+#endif
 
 		GameMenuWidget->MainMenu = GameMenuWidget->CurrentMenu = RootMenuItem->SubMenu;
 		GameMenuWidget->OnMenuHidden.BindSP( this, &FShooterDemoPlaybackMenu::DetachGameMenu );
@@ -127,7 +127,7 @@ void FShooterDemoPlaybackMenu::OnUIQuit()
 	if ( World )
 	{
 		const FShooterMenuSoundsStyle& MenuSounds = FShooterStyle::Get().GetWidgetStyle< FShooterMenuSoundsStyle >( "DefaultShooterMenuSoundsStyle" );
-		//MenuHelper::PlaySoundAndCall( World, MenuSounds.ExitGameSound, GetOwnerUserIndex(), this, &FShooterDemoPlaybackMenu::Quit );
+		MenuHelper::PlaySoundAndCall( World, MenuSounds.ExitGameSound, GetOwnerUserIndex(), this, &FShooterDemoPlaybackMenu::Quit );
 	}
 }
 

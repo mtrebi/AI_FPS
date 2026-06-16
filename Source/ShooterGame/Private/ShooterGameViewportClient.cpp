@@ -238,16 +238,16 @@ void UShooterGameViewportClient::DrawTransition(UCanvas* Canvas)
 {
 	if (GetOuterUEngine() != NULL)
 	{
-		//TEnumAsByte<enum ETransitionType> Type = GetOuterUEngine()->TransitionType;
-		//switch (Type)
-		//{
-		// case TT_Connecting:
-		// 	DrawTransitionMessage(Canvas, NSLOCTEXT("GameViewportClient", "ConnectingMessage", "CONNECTING").ToString());
-		// 	break;
-		// case TT_WaitingToConnect:
-		// 	DrawTransitionMessage(Canvas, NSLOCTEXT("GameViewportClient", "Waitingtoconnect", "Waiting to connect...").ToString());
-		// 	break;	
-		//}
+		ETransitionType Type = GetOuterUEngine()->TransitionType;
+		switch (Type)
+		{
+		case ETransitionType::Connecting:
+			DrawTransitionMessage(Canvas, NSLOCTEXT("GameViewportClient", "ConnectingMessage", "CONNECTING").ToString());
+			break;
+		case ETransitionType::WaitingToConnect:
+			DrawTransitionMessage(Canvas, NSLOCTEXT("GameViewportClient", "Waitingtoconnect", "Waiting to connect...").ToString());
+			break;
+		}
 	}
 }
 #endif //WITH_EDITOR

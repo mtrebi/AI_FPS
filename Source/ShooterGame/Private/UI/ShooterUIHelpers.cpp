@@ -7,14 +7,13 @@ FText ShooterUIHelpers::GetProfileOpenText() const
 {
 	// @todo: replace button with icon
 	// @todo: replace 'GamerCard' with distribution specific terminology (Steam, Origin, UPlay, etc)
-// #if PLATFORM_XBOXONE
-// 	return NSLOCTEXT("Network", "XB1OpenProfile", "Press A for GamerCard");
-// #elif PLATFORM_PS4
-// 	return NSLOCTEXT("Network", "PS4OpenProfile", "Press cross button for GamerCard");
-// #else
-// 	return NSLOCTEXT("Network", "PCOpenProfile", "Press Enter for GamerCard");
-// #endif
+#if PLATFORM_XBOXONE
+	return NSLOCTEXT("Network", "XB1OpenProfile", "Press A for GamerCard");
+#elif PLATFORM_PS4
 	return NSLOCTEXT("Network", "PS4OpenProfile", "Press cross button for GamerCard");
+#else
+	return NSLOCTEXT("Network", "PCOpenProfile", "Press Enter for GamerCard");
+#endif
 }
 
 bool ShooterUIHelpers::ProfileOpenedUI(const FUniqueNetId& Requestor, const FUniqueNetId& Requestee, const FOnProfileUIClosedDelegate* Delegate) const

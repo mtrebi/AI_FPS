@@ -9,7 +9,7 @@
 #include "UObject/PackageReload.h"
 
 //#include "Runtime/RHI/Public/RHICommandlist.h"
-
+// idc about this
 // Global struct for registering delegates super early
 struct FShooterGameGlobalDelegateInit
 {

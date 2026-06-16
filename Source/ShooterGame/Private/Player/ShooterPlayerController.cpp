@@ -1293,11 +1293,11 @@ void AShooterPlayerController::UpdateLeaderboardsOnGameEnd()
 							int32 KillsWriteData = ShooterPlayerState->GetKills();
 							int32 DeathsWriteData = ShooterPlayerState->GetDeaths();
 
-// #if !PLATFORM_XBOXONE
-// 							StatMatchesPlayed = (MatchWriteData += StatMatchesPlayed);
-// 							StatKills = (KillsWriteData += StatKills);
-// 							StatDeaths = (DeathsWriteData += StatDeaths);
-// #endif
+#if !PLATFORM_XBOXONE
+							StatMatchesPlayed = (MatchWriteData += StatMatchesPlayed);
+							StatKills = (KillsWriteData += StatKills);
+							StatDeaths = (DeathsWriteData += StatDeaths);
+#endif
 
 							ResultsWriteObject.SetIntStat(LEADERBOARD_STAT_SCORE, KillsWriteData);
 							ResultsWriteObject.SetIntStat(LEADERBOARD_STAT_KILLS, KillsWriteData);

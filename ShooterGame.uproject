@@ -23,13 +23,14 @@
 		{
 			"Name": "CodeView",
 			"Enabled": true
+		},
+		{
+			"Name": "ReplicationGraph",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [
-		"MacNoEditor",
-		"PS4",
-		"WindowsNoEditor",
-		"XboxOne"
+		"WindowsNoEditor"
 	],
 	"EpicSampleNameHash": "3868556100"
 }

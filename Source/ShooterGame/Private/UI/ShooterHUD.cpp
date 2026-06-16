@@ -10,6 +10,7 @@
 #include "Weapons/ShooterWeapon_Instant.h"
 #include "Online/ShooterPlayerState.h"
 #include "Misc/NetworkVersion.h"
+#include "OnlineSessionSettings.h"
 
 
 #define LOCTEXT_NAMESPACE "ShooterGame.HUD.Menu"
@@ -550,11 +551,11 @@ void AShooterHUD::DrawHUD()
 			if(SessionSubsystem.IsValid())
 			{
 				FNamedOnlineSession * Session = SessionSubsystem->GetNamedSession(NAME_GameSession);
-				// if(Session && Session->SessionInfo.IsValid())
-				// {
-				// 	NetModeDesc += TEXT("\nSession: ");
-				// 	NetModeDesc += Session->GetSessionIdStr();
-				// }
+				if(Session && Session->SessionInfo.IsValid())
+				{
+					NetModeDesc += TEXT("\nSession: ");
+					NetModeDesc += Session->GetSessionIdStr();
+				}
 			}
 
 		}

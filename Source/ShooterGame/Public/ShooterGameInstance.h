@@ -260,7 +260,7 @@ private:
 	FTickerDelegate TickDelegate;
 
 	/** Handle to various registered delegates */
-	FDelegateHandle TickDelegateHandle;
+	FTSTicker::FDelegateHandle TickDelegateHandle;
 	FDelegateHandle TravelLocalSessionFailureDelegateHandle;
 	FDelegateHandle OnJoinSessionCompleteDelegateHandle;
 	FDelegateHandle OnSearchSessionsCompleteDelegateHandle;
@@ -385,7 +385,7 @@ private:
 	void HandleSafeFrameChanged();
 
 	// Callback to handle controller connection changes.
-	void HandleControllerConnectionChange(bool bIsConnection, int32 Unused, int32 GameUserIndex);
+	void HandleControllerConnectionChange(bool bIsConnection, FPlatformUserId UserId, int32 GameUserIndex);
 
 	// Callback to handle controller pairing changes.
 	FReply OnPairingUsePreviousProfile();
@@ -394,7 +394,7 @@ private:
 	FReply OnPairingUseNewProfile();
 
 	// Callback to handle controller pairing changes.
-	void HandleControllerPairingChanged(int GameUserIndex, const FUniqueNetId& PreviousUser, const FUniqueNetId& NewUser);
+	void HandleControllerPairingChanged(int GameUserIndex, FControllerPairingChangedUserInfo PreviousUser, FControllerPairingChangedUserInfo NewUser);
 
 	// Handle confirming the controller disconnected dialog.
 	FReply OnControllerReconnectConfirm();	

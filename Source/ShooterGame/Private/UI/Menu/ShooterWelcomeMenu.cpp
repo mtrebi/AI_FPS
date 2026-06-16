@@ -51,13 +51,13 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 			.HAlign(HAlign_Center)
 			[ 
 				SAssignNew( PressPlayText, SRichTextBlock )
-// #if PLATFORM_PS4
-// 				.Text( LOCTEXT("PressStartPS4", "PRESS CROSS BUTTON TO PLAY" ) )
-// #elif PLATFORM_SWITCH
-// 				.Text(LOCTEXT("PressStartSwitch", "PRESS <img src=\"ShooterGame.Switch.Right\"/> TO PLAY"))
-// #else
-// 				.Text( LOCTEXT("PressStartXboxOne", "PRESS A TO PLAY" ) )
-// #endif
+#if PLATFORM_PS4
+				.Text( LOCTEXT("PressStartPS4", "PRESS CROSS BUTTON TO PLAY" ) )
+#elif PLATFORM_SWITCH
+				.Text(LOCTEXT("PressStartSwitch", "PRESS <img src=\"ShooterGame.Switch.Right\"/> TO PLAY"))
+#else
+				.Text( LOCTEXT("PressStartXboxOne", "PRESS A TO PLAY" ) )
+#endif
 				.TextStyle( FShooterStyle::Get(), "ShooterGame.WelcomeScreen.WelcomeTextStyle" )
 				.DecoratorStyleSet(&FShooterStyle::Get())
 				+ SRichTextBlock::ImageDecorator()
@@ -125,7 +125,7 @@ class SShooterWelcomeMenuWidget : public SCompoundWidget
 							const auto ExternalUI = OnlineSub->GetExternalUIInterface();
 							if (ExternalUI.IsValid())
 							{
-								//ExternalUI->ShowLoginUI(InKeyEvent.GetUserIndex(), false, true, FOnLoginUIClosedDelegate::CreateSP(MenuOwner, &FShooterWelcomeMenu::HandleLoginUIClosed));
+								ExternalUI->ShowLoginUI(InKeyEvent.GetUserIndex(), false, true, FOnLoginUIClosedDelegate::CreateSP(MenuOwner, &FShooterWelcomeMenu::HandleLoginUIClosed));
 								bSkipToMainMenu = false;
 							}
 						}
@@ -229,7 +229,7 @@ void FShooterWelcomeMenu::HandleLoginUIClosed(TSharedPtr<const FUniqueNetId> Uni
 			const auto IdentityInterface = OnlineSub->GetIdentityInterface();
 			if (IdentityInterface.IsValid())
 			{
-				//IdentityInterface->GetUserPrivilege(*UniqueId, EUserPrivileges::CanPlay, IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterWelcomeMenu::OnUserCanPlay));
+				IdentityInterface->GetUserPrivilege(*UniqueId, EUserPrivileges::CanPlay, IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterWelcomeMenu::OnUserCanPlay));
 			}
 		}
 	}

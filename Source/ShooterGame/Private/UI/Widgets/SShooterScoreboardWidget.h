@@ -112,10 +112,10 @@ protected:
 	TSharedRef<SWidget> MakeTotalsRow(uint8 TeamNum) const;
 
 	/** makes player rows */
-	TSharedRef<SWidget> MakePlayerRows(uint8 TeamNum) const;
+	TSharedRef<SWidget> MakePlayerRows(uint8 TeamNum);
 
 	/** makes player row */
-	TSharedRef<SWidget> MakePlayerRow(const FTeamPlayer& TeamPlayer) const;
+	TSharedRef<SWidget> MakePlayerRow(const FTeamPlayer& TeamPlayer);
 
 	/** updates PlayerState maps to display accurate scores */
 	void UpdatePlayerStateMaps();

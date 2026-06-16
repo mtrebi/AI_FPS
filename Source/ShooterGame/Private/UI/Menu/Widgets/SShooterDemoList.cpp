@@ -185,7 +185,7 @@ void SShooterDemoList::BuildDemoList()
 
 	if ( ReplayStreamer.IsValid() )
 	{
-		//ReplayStreamer->EnumerateStreams(EnumerateStreamsVersion, 0, FString(), TArray<FString>{}, FEnumerateStreamsCallback::CreateSP(this, &SShooterDemoList::OnEnumerateStreamsComplete));
+		ReplayStreamer->EnumerateStreams(EnumerateStreamsVersion, 0, FString(), TArray<FString>{}, FEnumerateStreamsCallback::CreateSP(this, &SShooterDemoList::OnEnumerateStreamsComplete));
 	}
 }
 
@@ -265,7 +265,7 @@ FReply SShooterDemoList::OnDemoDeleteConfirm()
 		bUpdatingDemoList = true;
 		DemoList.Empty();
 
-		//ReplayStreamer->DeleteFinishedStream(SelectedItem->StreamInfo.Name, FDeleteFinishedStreamCallback::CreateSP(this, &SShooterDemoList::OnDeleteFinishedStreamComplete));
+		ReplayStreamer->DeleteFinishedStream(SelectedItem->StreamInfo.Name, FDeleteFinishedStreamCallback::CreateSP(this, &SShooterDemoList::OnDeleteFinishedStreamComplete));
 	}
 
 	UShooterGameInstance* const GI = Cast<UShooterGameInstance>(PlayerOwner->GetGameInstance());

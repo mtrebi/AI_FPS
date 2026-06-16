@@ -172,7 +172,7 @@ private:
 	EVisibility GetProfileSwapVisibility() const;
 
 	/** called when we want to swap the logged in user */
-	bool ProfileUISwap(const int ControllerIndex) const; 
+	bool ProfileUISwap(const int ControllerIndex); 
 
 	/** delegate for if the profile is swapped */
 	void HandleProfileUISwapClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex, const FOnlineError& Error = FOnlineError());
@@ -282,27 +282,27 @@ namespace MenuHelper
 		return Item.ToSharedRef();
 	}
 
-	// /** add standard item to menu with UObject delegate */
-	// template< class UserClass >	
-	// FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuItem(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, UserClass* inObj, typename FShooterMenuItem::FOnConfirmMenuItem::TUObjectMethodDelegate< UserClass >::FMethodPtr inMethod)
-	// {
-	// 	EnsureValid(MenuItem);
-	// 	TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text));
-	// 	Item->OnConfirmMenuItem.BindUObject(inObj,inMethod);
-	// 	MenuItem->SubMenu.Add(Item);
-	// 	return Item.ToSharedRef();
-	// }
-	//
-	// /** add standard item to menu with TSharedPtr delegate */
-	// template< class UserClass >	
-	// FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuItemSP(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, UserClass* inObj, typename FShooterMenuItem::FOnConfirmMenuItem::TSPMethodDelegate< UserClass >::FMethodPtr inMethod)
-	// {
-	// 	EnsureValid(MenuItem);
-	// 	TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text));
-	// 	Item->OnConfirmMenuItem.BindSP(inObj,inMethod);
-	// 	MenuItem->SubMenu.Add(Item);
-	// 	return Item.ToSharedRef();
-	// }
+	/** add standard item to menu with UObject delegate */
+	template< class UserClass >
+	FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuItem(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, UserClass* inObj, void(UserClass::*inMethod)())
+	{
+		EnsureValid(MenuItem);
+		TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text));
+		Item->OnConfirmMenuItem.BindUObject(inObj, inMethod);
+		MenuItem->SubMenu.Add(Item);
+		return Item.ToSharedRef();
+	}
+
+	/** add standard item to menu with TSharedPtr delegate */
+	template< class UserClass >
+	FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuItemSP(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, UserClass* inObj, void(UserClass::*inMethod)())
+	{
+		EnsureValid(MenuItem);
+		TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text));
+		Item->OnConfirmMenuItem.BindSP(inObj, inMethod);
+		MenuItem->SubMenu.Add(Item);
+		return Item.ToSharedRef();
+	}
 
 
 	FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuOption(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, const TArray<FText>& OptionsList)
@@ -313,27 +313,40 @@ namespace MenuHelper
 		return MenuItem->SubMenu.Last().ToSharedRef();
 	}
 
-	// /** add multi-choice item to menu with UObject delegate */
-	// template< class UserClass >	
-	// FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuOption(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, const TArray<FText>& OptionsList, UserClass* inObj, typename FShooterMenuItem::FOnOptionChanged::TUObjectMethodDelegate< UserClass >::FMethodPtr inMethod)
-	// {
-	// 	EnsureValid(MenuItem);
-	// 	TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text, OptionsList));
-	// 	Item->OnOptionChanged.BindUObject(inObj, inMethod);
-	// 	MenuItem->SubMenu.Add(Item);
-	// 	return MenuItem->SubMenu.Last().ToSharedRef();
-	// }
+	/** add multi-choice item to menu with UObject delegate */
+	template< class UserClass >	
+	FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuOption(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, const TArray<FText>& OptionsList, UserClass* inObj, void(UserClass::*inMethod)())
+	{
+		EnsureValid(MenuItem);
+		TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text, OptionsList));
+		Item->OnOptionChanged.BindUObject(inObj, inMethod);
+		MenuItem->SubMenu.Add(Item);
+		return MenuItem->SubMenu.Last().ToSharedRef();
+	}
 
-	// /** add multi-choice item to menu with TSharedPtr delegate */
-	// template< class UserClass >	
-	// FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuOptionSP(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, const TArray<FText>& OptionsList, UserClass* inObj, typename FShooterMenuItem::FOnOptionChanged::TSPMethodDelegate< UserClass >::FMethodPtr inMethod)
-	// {
-	// 	EnsureValid(MenuItem);
-	// 	TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text, OptionsList));
-	// 	Item->OnOptionChanged.BindSP(inObj, inMethod);
-	// 	MenuItem->SubMenu.Add(Item);
-	// 	return MenuItem->SubMenu.Last().ToSharedRef();
-	// }
+	/** add multi-choice item to menu with TSharedPtr delegate */
+	template< class UserClass >	
+	FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuOptionSP(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, const TArray<FText>& OptionsList, UserClass* inObj, void(UserClass::*inMethod)())
+	{
+		EnsureValid(MenuItem);
+		TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text, OptionsList));
+		Item->OnOptionChanged.BindSP(inObj, inMethod);
+		MenuItem->SubMenu.Add(Item);
+		return MenuItem->SubMenu.Last().ToSharedRef();
+	}
+	
+	/** add options item to menu with TSharedPtr delegate */
+	template< class UserClass >
+	FORCEINLINE TSharedRef<FShooterMenuItem> AddMenuOptionSPV2(TSharedPtr<FShooterMenuItem>& MenuItem, const FText& Text, const TArray<FText>& OptionsList, UserClass* inObj, void(UserClass::*inMethod)(TSharedPtr<FShooterMenuItem>, int32))
+	{
+		EnsureValid(MenuItem);
+		TSharedPtr<FShooterMenuItem> Item = MakeShareable(new FShooterMenuItem(Text));
+		Item->SelectedMultiChoice = 0;
+		Item->MultiChoice = OptionsList;
+		Item->OnOptionChanged.BindSP(inObj, inMethod);
+		MenuItem->SubMenu.Add(Item);
+		return Item.ToSharedRef();
+	}
 
 
 	FORCEINLINE TSharedRef<FShooterMenuItem> AddExistingMenuItem(TSharedPtr<FShooterMenuItem>& MenuItem, TSharedRef<FShooterMenuItem> SubMenuItem)
@@ -357,21 +370,21 @@ namespace MenuHelper
 		MenuItem->SubMenu.Empty();
 	}
 
-	// template< class UserClass >	
-	// FORCEINLINE void PlaySoundAndCall(UWorld* World, const FSlateSound& Sound, int32 UserIndex, UserClass* inObj, typename FShooterMenuItem::FOnConfirmMenuItem::TSPMethodDelegate< UserClass >::FMethodPtr inMethod)
-	// {
-	// 	FSlateApplication::Get().PlaySound(Sound, UserIndex);
-	// 	if (World)
-	// 	{
-	// 		const float SoundDuration = FMath::Max(FSlateApplication::Get().GetSoundDuration(Sound), 0.1f);
-	// 		FTimerHandle DummyHandle;
-	// 		World->GetTimerManager().SetTimer(DummyHandle, FTimerDelegate::CreateSP(inObj, inMethod), SoundDuration, false);
-	// 	}
-	// 	else
-	// 	{
-	// 		FTimerDelegate D = FTimerDelegate::CreateSP(inObj, inMethod);
-	// 		D.ExecuteIfBound();
-	// 	}
-	// }
+	template< class UserClass >	
+	FORCEINLINE void PlaySoundAndCall(UWorld* World, const FSlateSound& Sound, int32 UserIndex, UserClass* inObj, void(UserClass::*inMethod)())
+	{
+		FSlateApplication::Get().PlaySound(Sound, UserIndex);
+		if (World)
+		{
+			const float SoundDuration = FMath::Max(FSlateApplication::Get().GetSoundDuration(Sound), 0.1f);
+			FTimerHandle DummyHandle;
+			World->GetTimerManager().SetTimer(DummyHandle, FTimerDelegate::CreateSP(inObj, inMethod), SoundDuration, false);
+		}
+		else
+		{
+			FTimerDelegate D = FTimerDelegate::CreateSP(inObj, inMethod);
+			D.ExecuteIfBound();
+		}
+	}
 
 }

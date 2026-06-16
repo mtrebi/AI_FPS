@@ -42,14 +42,15 @@ void UShooterLocalPlayer::LoadPersistentUser()
 	{
 		// Use the platform id here to be resilient in the face of controller swapping and similar situations.
 		//FPlatformUserId PlatformId = GetControllerId();
+		FPlatformUserId PlatformId = FPlatformMisc::GetPlatformUserForUserIndex(GetControllerId());
 
-		// auto Identity = Online::GetIdentityInterface();
-		// if (Identity.IsValid() && GetPreferredUniqueNetId().IsValid())
-		// {
-		// 	PlatformId = Identity->GetPlatformUserIdFromUniqueNetId(*GetPreferredUniqueNetId());
-		// }
-		//
-		// PersistentUser = UShooterPersistentUser::LoadPersistentUser(SaveGameName, PlatformId );
+		auto Identity = Online::GetIdentityInterface();
+		if (Identity.IsValid() && GetPreferredUniqueNetId().IsValid())
+		{
+			PlatformId = Identity->GetPlatformUserIdFromUniqueNetId(*GetPreferredUniqueNetId());
+		}
+		
+		PersistentUser = UShooterPersistentUser::LoadPersistentUser(SaveGameName, PlatformId );
 	}
 }
 
