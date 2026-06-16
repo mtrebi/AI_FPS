@@ -9,14 +9,13 @@
 #include "UObject/PackageReload.h"
 
 //#include "Runtime/RHI/Public/RHICommandlist.h"
-// idc about this
 // Global struct for registering delegates super early
 struct FShooterGameGlobalDelegateInit
 {
 	FShooterGameGlobalDelegateInit()
 	{
-		//FPakPlatformFile::GetPakChunkSignatureCheckFailedHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakChunkSignatureCheckFailed);
-		//FPakPlatformFile::GetPakMasterSignatureTableCheckFailureHandler().AddStatic(FShooterGameGlobalDelegateInit::HandlePakMasterSignatureTableCheckFailure);
+		FPakPlatformFile::GetPakSigningFailureHandlerData().GetPakChunkSignatureCheckFailedDelegate().AddStatic(FShooterGameGlobalDelegateInit::HandlePakChunkSignatureCheckFailed);
+		FPakPlatformFile::GetPakSigningFailureHandlerData().GetPrincipalSignatureTableCheckFailedDelegate().AddStatic(FShooterGameGlobalDelegateInit::HandlePakMasterSignatureTableCheckFailure);
 	}
 
 	static void HandlePakChunkSignatureCheckFailed(const FPakChunkSignatureCheckFailedData& Data)
@@ -29,7 +28,7 @@ struct FShooterGameGlobalDelegateInit
 		UE_LOG(LogShooter, Fatal, TEXT("Pak master signature table check failed for pak '%s'"), *InPakFilename);
 	}
 };
-//GShooterGameGlobalDelegateInit;
+static FShooterGameGlobalDelegateInit GShooterGameGlobalDelegateInit;
 
 #if !UE_BUILD_SHIPPING
 

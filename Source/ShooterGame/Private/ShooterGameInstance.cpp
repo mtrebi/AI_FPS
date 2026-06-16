@@ -21,8 +21,6 @@
 #include "Online/ShooterOnlineSessionClient.h"
 #include "Containers/Ticker.h"
 
-// too hard
-
 #define SETTING_GAMEMODE FName(TEXT("GAMEMODE"))
 #define SETTING_MAPNAME FName(TEXT("MAPNAME"))
 #define SETTING_MATCHING_HOPPER FName(TEXT("MATCHMAKING_HOPPER"))
@@ -169,73 +167,73 @@ void UShooterGameInstance::Shutdown()
 	Super::Shutdown();
 
 	// Unregister ticker delegate
-	//FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+	FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 }
 
 void UShooterGameInstance::HandleNetworkConnectionStatusChanged( const FString& ServiceName, EOnlineServerConnectionStatus::Type LastConnectionStatus, EOnlineServerConnectionStatus::Type ConnectionStatus )
 {
 	UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: %s" ), EOnlineServerConnectionStatus::ToString( ConnectionStatus ) );
 
-// #if SHOOTER_CONSOLE_UI
-// 	// If we are disconnected from server, and not currently at (or heading to) the welcome screen
-// 	// then display a message on consoles
-// 	if (	OnlineMode != EOnlineMode::Offline && 
-// 			PendingState != ShooterGameInstanceState::WelcomeScreen &&
-// 			CurrentState != ShooterGameInstanceState::WelcomeScreen && 
-// 			ConnectionStatus != EOnlineServerConnectionStatus::Connected &&
-// 			ConnectionStatus != EOnlineServerConnectionStatus::Normal)
-// 	{
-// 		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: Going to main menu" ) );
-//
-// 		// Display message on consoles
-// #if PLATFORM_XBOXONE
-// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
-// #elif PLATFORM_PS4
-// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to \"PSN\" has been lost." );
-// #else
-// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
-// #endif
-// 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
-// 		
-// 		UWorld* const World = GetWorld();
-// 		AShooterGameMode* const GameMode = World != NULL ? Cast<AShooterGameMode>(World->GetAuthGameMode()) : NULL;
-// 		if (GameMode)
-// 		{
-// 			GameMode->AbortMatch();
-// 		}
-// 		
-// 		ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
-// 	}
-//
-// 	CurrentConnectionStatus = ConnectionStatus;
-// #endif
+#if SHOOTER_CONSOLE_UI
+	// If we are disconnected from server, and not currently at (or heading to) the welcome screen
+	// then display a message on consoles
+	if (	OnlineMode != EOnlineMode::Offline && 
+			PendingState != ShooterGameInstanceState::WelcomeScreen &&
+			CurrentState != ShooterGameInstanceState::WelcomeScreen && 
+			ConnectionStatus != EOnlineServerConnectionStatus::Connected &&
+			ConnectionStatus != EOnlineServerConnectionStatus::Normal)
+	{
+		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleNetworkConnectionStatusChanged: Going to main menu" ) );
+
+		// Display message on consoles
+#if PLATFORM_XBOXONE
+		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
+#elif PLATFORM_PS4
+		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to \"PSN\" has been lost." );
+#else
+		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
+#endif
+		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+		
+		UWorld* const World = GetWorld();
+		AShooterGameMode* const GameMode = World != NULL ? Cast<AShooterGameMode>(World->GetAuthGameMode()) : NULL;
+		if (GameMode)
+		{
+			GameMode->AbortMatch();
+		}
+		
+		ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
+	}
+
+	CurrentConnectionStatus = ConnectionStatus;
+#endif
 }
 
 void UShooterGameInstance::HandleSessionFailure( const FUniqueNetId& NetId, ESessionFailure::Type FailureType )
 {
 	UE_LOG( LogOnlineGame, Warning, TEXT( "UShooterGameInstance::HandleSessionFailure: %u" ), (uint32)FailureType );
 
-// #if SHOOTER_CONSOLE_UI
-// 	// If we are not currently at (or heading to) the welcome screen then display a message on consoles
-// 	if (	OnlineMode != EOnlineMode::Offline &&
-// 			PendingState != ShooterGameInstanceState::WelcomeScreen &&
-// 			CurrentState != ShooterGameInstanceState::WelcomeScreen )
-// 	{
-// 		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleSessionFailure: Going to main menu" ) );
-//
-// 		// Display message on consoles
-// #if PLATFORM_XBOXONE
-// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
-// #elif PLATFORM_PS4
-// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to PSN has been lost." );
-// #else
-// 		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
-// #endif
-// 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
-// 		
-// 		ShowMessageThenGotoState( ReturnReason, OKButton,  FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
-// 	}
-// #endif
+#if SHOOTER_CONSOLE_UI
+	// If we are not currently at (or heading to) the welcome screen then display a message on consoles
+	if (	OnlineMode != EOnlineMode::Offline &&
+			PendingState != ShooterGameInstanceState::WelcomeScreen &&
+			CurrentState != ShooterGameInstanceState::WelcomeScreen )
+	{
+		UE_LOG( LogOnlineGame, Log, TEXT( "UShooterGameInstance::HandleSessionFailure: Going to main menu" ) );
+
+		// Display message on consoles
+#if PLATFORM_XBOXONE
+		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to Xbox LIVE has been lost." );
+#elif PLATFORM_PS4
+		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection to PSN has been lost." );
+#else
+		const FText ReturnReason	= NSLOCTEXT( "NetworkFailures", "ServiceUnavailable", "Connection has been lost." );
+#endif
+		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+		
+		ShowMessageThenGotoState( ReturnReason, OKButton,  FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
+	}
+#endif
 }
 
 void UShooterGameInstance::OnPreLoadMap(const FString& MapName)
@@ -246,7 +244,7 @@ void UShooterGameInstance::OnPreLoadMap(const FString& MapName)
 		UGameViewportClient* GameViewportClient = GetGameViewportClient();
 		if (GameViewportClient != nullptr)
 		{
-			//GameViewportClient->SetDisableSplitscreenOverride(false);
+			GameViewportClient->SetForceDisableSplitscreen(false);
 
 			bPendingEnableSplitscreen = false;
 		}
@@ -1803,29 +1801,29 @@ bool UShooterGameInstance::ValidatePlayerForOnlinePlay(ULocalPlayer* LocalPlayer
 	// Get the viewport
 	UShooterGameViewportClient * ShooterViewport = Cast<UShooterGameViewportClient>(GetGameViewportClient());
 
-// #if PLATFORM_XBOXONE
-// 	if (CurrentConnectionStatus != EOnlineServerConnectionStatus::Connected)
-// 	{
-// 		// Don't let them play online if they aren't connected to Xbox LIVE
-// 		if (ShooterViewport != NULL)
-// 		{
-// 			const FText Msg				= NSLOCTEXT("NetworkFailures", "ServiceDisconnected", "You must be connected to the Xbox LIVE service to play online.");
-// 			const FText OKButtonString	= NSLOCTEXT("DialogButtons", "OKAY", "OK");
-//
-// 			ShooterViewport->ShowDialog( 
-// 				NULL,
-// 				EShooterDialogType::Generic,
-// 				Msg,
-// 				OKButtonString,
-// 				FText::GetEmpty(),
-// 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric),
-// 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric)
-// 			);
-// 		}
-//
-// 		return false;
-// 	}
-//#endif
+ #if PLATFORM_XBOXONE
+ 	if (CurrentConnectionStatus != EOnlineServerConnectionStatus::Connected)
+ 	{
+ 		// Don't let them play online if they aren't connected to Xbox LIVE
+ 		if (ShooterViewport != NULL)
+ 		{
+ 			const FText Msg				= NSLOCTEXT("NetworkFailures", "ServiceDisconnected", "You must be connected to the Xbox LIVE service to play online.");
+ 			const FText OKButtonString	= NSLOCTEXT("DialogButtons", "OKAY", "OK");
+
+ 			ShooterViewport->ShowDialog( 
+ 				NULL,
+ 				EShooterDialogType::Generic,
+ 				Msg,
+ 				OKButtonString,
+ 				FText::GetEmpty(),
+ 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric),
+ 				FOnClicked::CreateUObject(this, &UShooterGameInstance::OnConfirmGeneric)
+ 			);
+ 		}
+
+ 		return false;
+ 	}
+#endif
 
 	if (!IsLocalPlayerOnline(LocalPlayer))
 	{
@@ -1913,7 +1911,7 @@ void UShooterGameInstance::StartOnlinePrivilegeTask(const IOnlineIdentity::FOnGe
 	else
 	{
 		// Can only get away with faking the UniqueNetId here because the delegates don't use it
-		//Delegate.ExecuteIfBound(FUniqueNetIdString(), Privilege, (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures);
+		Delegate.ExecuteIfBound(*FUniqueNetIdString::EmptyId(), Privilege, (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures);
 	}
 }
 
@@ -2138,7 +2136,7 @@ void UShooterGameInstance::ReceivedNetworkEncryptionToken(const FString& Encrypt
 	else
 	{
 		Response.Response = EEncryptionResponse::Success;
-		//Response.EncryptionKey = DebugTestEncryptionKey;
+		Response.EncryptionData.Key = DebugTestEncryptionKey;
 	}
 
 	Delegate.ExecuteIfBound(Response);
@@ -2157,7 +2155,7 @@ void UShooterGameInstance::ReceivedNetworkEncryptionAck(const FOnEncryptionKeyRe
 	TArray<uint8> FakeKey;
 	
 	Response.Response = EEncryptionResponse::Success;
-	//Response.EncryptionKey = DebugTestEncryptionKey;
+	Response.EncryptionData.Key = DebugTestEncryptionKey;
 
 	Delegate.ExecuteIfBound(Response);
 }

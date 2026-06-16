@@ -754,30 +754,30 @@ void AShooterPlayerController::HandleReturnToMainMenu()
 	CleanupSessionOnReturnToMenu();
 }
 
-// void AShooterPlayerController::ClientReturnToMainMenu_Implementation(const FString& InReturnReason)
-// {		
-// 	UShooterGameInstance* SGI = GetWorld() != NULL ? Cast<UShooterGameInstance>(GetWorld()->GetGameInstance()) : NULL;
-//
-// 	if ( !ensure( SGI != NULL ) )
-// 	{
-// 		return;
-// 	}
-//
-// 	if ( GetNetMode() == NM_Client )
-// 	{
-// 		const FText ReturnReason	= NSLOCTEXT( "NetworkErrors", "HostQuit", "The host has quit the match." );
-// 		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
-//
-// 		SGI->ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
-// 	}
-// 	else
-// 	{
-// 		SGI->GotoState(ShooterGameInstanceState::MainMenu);
-// 	}
-//
-// 	// Clear the flag so we don't do normal end of round stuff next
-// 	bGameEndedFrame = false;
-// }
+void AShooterPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)
+{		
+	UShooterGameInstance* SGI = GetWorld() != NULL ? Cast<UShooterGameInstance>(GetWorld()->GetGameInstance()) : NULL;
+
+	if ( !ensure( SGI != NULL ) )
+	{
+		return;
+	}
+
+	if ( GetNetMode() == NM_Client )
+	{
+		const FText ReturnReason	= NSLOCTEXT( "NetworkErrors", "HostQuit", "The host has quit the match." );
+		const FText OKButton		= NSLOCTEXT( "DialogButtons", "OKAY", "OK" );
+
+		SGI->ShowMessageThenGotoState( ReturnReason, OKButton, FText::GetEmpty(), ShooterGameInstanceState::MainMenu );
+	}
+	else
+	{
+		SGI->GotoState(ShooterGameInstanceState::MainMenu);
+	}
+
+	// Clear the flag so we don't do normal end of round stuff next
+	bGameEndedFrame = false;
+}
 
 /** Ends and/or destroys game session */
 void AShooterPlayerController::CleanupSessionOnReturnToMenu()
