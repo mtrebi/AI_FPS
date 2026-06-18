@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 #pragma once
 #include "SlateBasics.h"
 #include "SlateExtras.h"
@@ -21,7 +21,7 @@ public:
 	 * @param UniqueId The unique Id of the user who just signed in.
 	 * @param ControllerIndex The controller index of the player who just signed in.
 	 */
-	void HandleLoginUIClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex);
+	void HandleLoginUIClosed(TSharedPtr<const FUniqueNetId> UniqueId, const int ControllerIndex, const FOnlineError& Error = FOnlineError());
 
 	/**
 	 * Called when a user needs to advance from the welcome screen to the main menu.

@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -32,6 +32,16 @@ class UShooterGameUserSettings : public UGameUserSettings
 		bIsLanMatch = InbIsLanMatch;
 	}
 	
+	bool IsDedicatedServer() const
+	{
+		return bIsDedicatedServer;
+	}
+
+	void SetDedicatedServer(bool InbIsDedicatedServer)
+	{
+		bIsDedicatedServer = InbIsDedicatedServer;
+	}
+
 	// interface UGameUserSettings
 	virtual void SetToDefaults() override;
 
@@ -47,4 +57,8 @@ private:
 	/** is lan match? */
 	UPROPERTY(config)
 	bool bIsLanMatch;
+
+	/** is dedicated server? */
+	UPROPERTY(config)
+	bool bIsDedicatedServer;
 };

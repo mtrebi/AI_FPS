@@ -1,15 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Navigation/MyNavigationQueryFilter.h"
 #include "ShooterGame.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/Navigation/MyNavigationQueryFilter.h"
+#include "Navigation/MyRecastNavMesh.h"
+#include "Others/HelperMethods.h"
 
 UMyNavigationQueryFilter::UMyNavigationQueryFilter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 
 }
 
-void UMyNavigationQueryFilter::InitializeFilter(const ANavigationData& NavData, FNavigationQueryFilter& Filter) const
+void UMyNavigationQueryFilter::InitializeFilter(const ANavigationData& NavData, const UObject* Querier, FNavigationQueryFilter& Filter) const
 {
 #if WITH_RECAST
 
@@ -43,6 +44,6 @@ void UMyNavigationQueryFilter::InitializeFilter(const ANavigationData& NavData, 
 	}
 
 #endif // WITH_RECAST
-
-	Super::InitializeFilter(NavData, Filter);
+	Super::InitializeFilter(NavData, Querier, Filter);
+	//Super::InitializeFilter(const NavData, const UObject* Querier, FNavigationQueryFilter& Filter);
 }

@@ -1,32 +1,22 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 using System.Collections.Generic;
 
 public class ShooterGameEditorTarget : TargetRules
 {
-
-	public ShooterGameEditorTarget(TargetInfo Target)
+	public ShooterGameEditorTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
-	}
+		
+		DefaultBuildSettings = BuildSettingsVersion.V5;
 
-	//
-	// TargetRules interface.
-	//
+// Use the latest include order version
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 
-	public override void SetupBinaries(
-		TargetInfo Target,
-		ref List<UEBuildBinaryConfiguration> OutBuildBinaryConfigurations,
-		ref List<string> OutExtraModuleNames
-		)
-	{
-		OutExtraModuleNames.Add("ShooterGame");
+// Ensure a unique build environment to avoid conflicts
+//BuildEnvironment = TargetBuildEnvironment.Unique;
+
+		ExtraModuleNames.Add("ShooterGame");
 	}
-    public override GUBPProjectOptions GUBP_IncludeProjectInPromotedBuild_EditorTypeOnly(UnrealTargetPlatform HostPlatform)
-    {
-        var Result = new GUBPProjectOptions();
-        Result.bIsPromotable = true;
-        return Result;
-    }
 }

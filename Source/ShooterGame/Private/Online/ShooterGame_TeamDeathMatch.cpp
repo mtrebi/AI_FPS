@@ -1,10 +1,11 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "Online/ShooterGame_TeamDeathMatch.h"
 #include "ShooterGame.h"
 #include "ShooterTeamStart.h"
-#include "Online/ShooterGame_TeamDeathMatch.h"
 #include "Online/ShooterPlayerState.h"
 #include "Bots/ShooterAIController.h"
+#include "Online/ShooterGameState.h"
 
 AShooterGame_TeamDeathMatch::AShooterGame_TeamDeathMatch(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -81,7 +82,7 @@ int32 AShooterGame_TeamDeathMatch::ChooseTeam(AShooterPlayerState* ForPlayerStat
 void AShooterGame_TeamDeathMatch::DetermineMatchWinner()
 {
 	AShooterGameState const* const MyGameState = Cast<AShooterGameState>(GameState);
-	int32 BestScore = MAX_uint32;
+	int32 BestScore = MIN_uint32;
 	int32 BestTeam = -1;
 	int32 NumBestTeams = 1;
 

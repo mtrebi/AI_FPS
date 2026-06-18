@@ -1,7 +1,9 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+#include "Online/ShooterPlayerState.h"
 #include "ShooterGame.h"
-#include "ShooterPlayerState.h"
+#include "Online/ShooterGameState.h"
+#include "Player/ShooterPlayerController.h"
 
 AShooterPlayerState::AShooterPlayerState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -141,7 +143,7 @@ void AShooterPlayerState::ScoreDeath(AShooterPlayerState* KilledBy, int32 Points
 
 void AShooterPlayerState::ScorePoints(int32 Points)
 {
-	AShooterGameState* const MyGameState = Cast<AShooterGameState>(GetWorld()->GameState);
+	AShooterGameState* const MyGameState = GetWorld()->GetGameState<AShooterGameState>();
 	if (MyGameState && TeamNumber >= 0)
 	{
 		if (TeamNumber >= MyGameState->TeamScores.Num())
@@ -168,7 +170,7 @@ void AShooterPlayerState::InformAboutKill_Implementation(class AShooterPlayerSta
 			{
 				// a local player might not have an ID if it was created with CreateDebugPlayer.
 				ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(TestPC->Player);
-				TSharedPtr<const FUniqueNetId> LocalID = LocalPlayer->GetCachedUniqueNetId();
+				FUniqueNetIdRepl LocalID = LocalPlayer->GetCachedUniqueNetId();
 				if (LocalID.IsValid() &&  *LocalPlayer->GetCachedUniqueNetId() == *KillerPlayerState->UniqueId)
 				{			
 					TestPC->OnKill();
@@ -202,9 +204,9 @@ void AShooterPlayerState::GetLifetimeReplicatedProps( TArray< FLifetimeProperty 
 
 FString AShooterPlayerState::GetShortPlayerName() const
 {
-	if( PlayerName.Len() > MAX_PLAYER_NAME_LENGTH )
+	if( GetPlayerName().Len() > MAX_PLAYER_NAME_LENGTH )
 	{
-		return PlayerName.Left(MAX_PLAYER_NAME_LENGTH) + "...";
+		return GetPlayerName().Left(MAX_PLAYER_NAME_LENGTH) + "...";
 	}
-	return PlayerName;
+	return GetPlayerName();
 }

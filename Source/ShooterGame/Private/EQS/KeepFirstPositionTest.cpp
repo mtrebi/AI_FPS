@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/KeepFirstPositionTest.h"
+
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/Bots/ShooterBot.h"
-#include "Public/Bots/ShooterAIController.h"
-#include "Public/EQS/KeepFirstPositionTest.h"
-
+#include "Bots/ShooterBot.h"
+#include "Bots/ShooterAIController.h"
 
 
 UKeepFirstPositionTest::UKeepFirstPositionTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -30,7 +30,7 @@ void UKeepFirstPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	bool bWantsHit = BoolValue.GetValue();
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 
 	// @ todo many bots
 	TArray<FVector> ContextLocations;
@@ -79,7 +79,7 @@ void UKeepFirstPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
 	{
 		
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		It.SetScore(TestPurpose, FilterType, FirstLocations.Contains(ItemLocation), bWantsHit);
 	}
 }

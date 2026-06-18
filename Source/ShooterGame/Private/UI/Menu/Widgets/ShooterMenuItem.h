@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 #pragma once
 #include "SlateBasics.h"
 #include "SlateExtras.h"
@@ -35,7 +35,7 @@ public:
 	{
 		Menu = _Menu;
 		SelectedIndex = _SelectedIndex;
-		MenuTitle = _MenuTitle;
+		MenuTitle = MoveTemp(_MenuTitle);
 	}
 };
 
@@ -109,7 +109,7 @@ public:
 	FShooterMenuItem(FText _text)
 	{
 		bVisible = true;
-		Text = _text;
+		Text = MoveTemp(_text);
 		MenuItemType = EShooterMenuItemType::Standard;
 	}
 
@@ -125,9 +125,9 @@ public:
 	FShooterMenuItem(FText _text, TArray<FText> _choices, int32 DefaultIndex=0)
 	{
 		bVisible = true;
-		Text = _text;
+		Text = MoveTemp(_text);
 		MenuItemType = EShooterMenuItemType::MultiChoice;
-		MultiChoice = _choices;
+		MultiChoice = MoveTemp(_choices);
 		MinMultiChoiceIndex = MaxMultiChoiceIndex = -1;
 		SelectedMultiChoice = DefaultIndex;
 	}
@@ -137,9 +137,9 @@ public:
 		return Text;
 	}
 
-	void SetText(const FText& UpdatedText)
+	void SetText(FText UpdatedText)
 	{
-		Text = UpdatedText;
+		Text = MoveTemp(UpdatedText);
 		if (Widget.IsValid())
 		{
 			Widget->UpdateItemText(Text);

@@ -1,15 +1,20 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
+
+#include "Online/ShooterGameMode.h"
 #include "ShooterGame.h"
+#include "Engine/PawnIterator.h"
 #include "ShooterGameInstance.h"
 #include "UI/ShooterHUD.h"
 #include "Player/ShooterSpectatorPawn.h"
 #include "Player/ShooterDemoSpectator.h"
-#include "Online/ShooterGameMode.h"
+#include "Engine/World.h"
 #include "Online/ShooterPlayerState.h"
 #include "Online/ShooterGameSession.h"
 #include "Bots/ShooterAIController.h"
 #include "ShooterTeamStart.h"
+#include "Online/ShooterGameState.h"
+#include "Player/ShooterPlayerController.h"
 
 
 AShooterGameMode::AShooterGameMode(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -46,7 +51,7 @@ void AShooterGameMode::InitGame(const FString& MapName, const FString& Options, 
 	Super::InitGame(MapName, Options, ErrorMessage);
 
 	const UGameInstance* GameInstance = GetGameInstance();
-	if (GameInstance && Cast<UShooterGameInstance>(GameInstance)->GetIsOnline())
+	if (GameInstance && Cast<UShooterGameInstance>(GameInstance)->GetOnlineMode() != EOnlineMode::Offline)
 	{
 		bPauseable = false;
 	}
@@ -123,6 +128,8 @@ void AShooterGameMode::DefaultTimer()
 
 void AShooterGameMode::HandleMatchIsWaitingToStart()
 {
+	Super::HandleMatchIsWaitingToStart();
+
 	if (bNeedsBotCreation)
 	{
 		CreateBotControllers();
@@ -188,7 +195,7 @@ void AShooterGameMode::FinishMatch()
 		// lock all pawns
 		// pawns are not marked as keep for seamless travel, so we will create new pawns on the next match rather than
 		// turning these back on.
-		for (FConstPawnIterator It = GetWorld()->GetPawnIterator(); It; ++It)
+		for (TActorIterator<APawn> It(GetWorld()); It; ++It)
 		{
 			(*It)->TurnOff();
 		}
@@ -220,8 +227,8 @@ void AShooterGameMode::RequestFinishAndExitToMainMenu()
 
 		if (!Controller->IsLocalController())
 		{
-			const FString RemoteReturnReason = NSLOCTEXT("NetworkErrors", "HostHasLeft", "Host has left the game.").ToString();
-			Controller->ClientReturnToMainMenu(RemoteReturnReason);
+			const FText RemoteReturnReason = NSLOCTEXT("NetworkErrors", "HostHasLeft", "Host has left the game.");
+			Controller->ClientReturnToMainMenuWithTextReason(RemoteReturnReason);
 		}
 		else
 		{
@@ -246,7 +253,7 @@ bool AShooterGameMode::IsWinner(class AShooterPlayerState* PlayerState) const
 	return false;
 }
 
-void AShooterGameMode::PreLogin(const FString& Options, const FString& Address, const TSharedPtr<const FUniqueNetId>& UniqueId, FString& ErrorMessage)
+void AShooterGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
 	AShooterGameState* const MyGameState = Cast<AShooterGameState>(GameState);
 	const bool bMatchIsOver = MyGameState && MyGameState->HasMatchEnded();
@@ -306,7 +313,7 @@ float AShooterGameMode::ModifyDamage(float Damage, AActor* DamagedActor, struct 
 	AShooterCharacter* DamagedPawn = Cast<AShooterCharacter>(DamagedActor);
 	if (DamagedPawn && EventInstigator)
 	{
-		AShooterPlayerState* DamagedPlayerState = Cast<AShooterPlayerState>(DamagedPawn->PlayerState);
+		AShooterPlayerState* DamagedPlayerState = Cast<AShooterPlayerState>(DamagedPawn->GetPlayerState());
 		AShooterPlayerState* InstigatorPlayerState = Cast<AShooterPlayerState>(EventInstigator->PlayerState);
 
 		// disable friendly fire
@@ -430,7 +437,7 @@ bool AShooterGameMode::IsSpawnpointPreferred(APlayerStart* SpawnPoint, AControll
 	if (MyPawn)
 	{
 		const FVector SpawnLocation = SpawnPoint->GetActorLocation();
-		for (FConstPawnIterator It = GetWorld()->GetPawnIterator(); It; ++It)
+		for (TActorIterator<APawn> It(GetWorld()); It; ++It)
 		{
 			ACharacter* OtherPawn = Cast<ACharacter>(*It);
 			if (OtherPawn && OtherPawn != MyPawn)
@@ -438,7 +445,7 @@ bool AShooterGameMode::IsSpawnpointPreferred(APlayerStart* SpawnPoint, AControll
 				const float CombinedHeight = (MyPawn->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + OtherPawn->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()) * 2.0f;
 				const float CombinedRadius = MyPawn->GetCapsuleComponent()->GetScaledCapsuleRadius() + OtherPawn->GetCapsuleComponent()->GetScaledCapsuleRadius();
 				const FVector OtherLocation = OtherPawn->GetActorLocation();
-
+		
 				// check if player start overlaps this pawn
 				if (FMath::Abs(SpawnLocation.Z - OtherLocation.Z) < CombinedHeight && (SpawnLocation - OtherLocation).Size2D() < CombinedRadius)
 				{
@@ -493,8 +500,6 @@ AShooterAIController* AShooterGameMode::CreateBot(int32 BotNum)
 void AShooterGameMode::StartBots()
 {
 	// checking number of existing human player.
-	int32 NumPlayers = 0;
-	int32 NumBots = 0;
 	UWorld* World = GetWorld();
 	for (FConstControllerIterator It = World->GetControllerIterator(); It; ++It)
 	{		
@@ -513,7 +518,7 @@ void AShooterGameMode::InitBot(AShooterAIController* AIController, int32 BotNum)
 		if (AIController->PlayerState)
 		{
 			FString BotName = FString::Printf(TEXT("Bot %d"), BotNum);
-			AIController->PlayerState->PlayerName = BotName;
+			AIController->PlayerState->SetPlayerName(BotName);
 		}		
 	}
 }

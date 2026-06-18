@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/CloserHighInfluencePositionsTest.h"
+
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
 #include "Bots/ShooterAIController.h"
 #include "Bots/ShooterBot.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/CloserHighInfluencePositionsTest.h"
+#include "Others/HelperMethods.h"
 
 
 UCloserHighInfluencePositionsTest::UCloserHighInfluencePositionsTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -33,7 +34,7 @@ void UCloserHighInfluencePositionsTest::RunTest(FEnvQueryInstance& QueryInstance
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 
 
 	APawn * Pawn = Cast<APawn>(QueryOwner);
@@ -56,7 +57,7 @@ void UCloserHighInfluencePositionsTest::RunTest(FEnvQueryInstance& QueryInstance
 	}
 
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It) {
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		InfluenceTile * ItemTile = InfluenceMap->GetInfluence(ItemLocation);
 		TArray<InfluenceTile *> Neighbors = InfluenceMap->GetWalkableNeighbors(ItemTile->Index);
 

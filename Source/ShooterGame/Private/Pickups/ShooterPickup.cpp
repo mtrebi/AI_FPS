@@ -1,7 +1,9 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Pickups/ShooterPickup.h"
+#include "ShooterGame.h"
+#include "Player/ShooterCharacter.h"
+#include "Online/ShooterGameMode.h"
 #include "Particles/ParticleSystemComponent.h"
 
 AShooterPickup::AShooterPickup(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -17,7 +19,7 @@ AShooterPickup::AShooterPickup(const FObjectInitializer& ObjectInitializer) : Su
 	PickupPSC = ObjectInitializer.CreateDefaultSubobject<UParticleSystemComponent>(this, TEXT("PickupFX"));
 	PickupPSC->bAutoActivate = false;
 	PickupPSC->bAutoDestroy = false;
-	PickupPSC->AttachParent = RootComponent;
+	PickupPSC->SetupAttachment(RootComponent);
 
 	RespawnTime = 10.0f;
 	bIsActive = false;
@@ -58,14 +60,14 @@ void AShooterPickup::GivePickupTo(class AShooterCharacter* Pawn)
 
 void AShooterPickup::PickupOnTouch(class AShooterCharacter* Pawn)
 {
-	if (bIsActive && Pawn && Pawn->IsAlive() && !IsPendingKill())
+	if (bIsActive && Pawn && Pawn->IsAlive() && !IsPendingKill(EGCOptions::None))
 	{
 		if (CanBePickedUp(Pawn))
 		{
 			GivePickupTo(Pawn);
 			PickedUpBy = Pawn;
 
-			if (!IsPendingKill())
+			if (!IsPendingKill(EGCOptions::None))
 			{
 				bIsActive = false;
 				OnPickedUp();
@@ -85,12 +87,12 @@ void AShooterPickup::RespawnPickup()
 	PickedUpBy = NULL;
 	OnRespawned();
 
-	TArray<AActor*> OverlappingPawns;
+	TSet<AActor*> OverlappingPawns;
 	GetOverlappingActors(OverlappingPawns, AShooterCharacter::StaticClass());
 
-	for (int32 i = 0; i < OverlappingPawns.Num(); i++)
+	for (AActor* OverlappingPawn : OverlappingPawns)
 	{
-		PickupOnTouch(Cast<AShooterCharacter>(OverlappingPawns[i]));	
+		PickupOnTouch(CastChecked<AShooterCharacter>(OverlappingPawn));	
 	}
 }
 

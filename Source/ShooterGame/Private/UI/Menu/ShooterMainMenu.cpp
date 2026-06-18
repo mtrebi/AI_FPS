@@ -1,20 +1,21 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterMainMenu.h"
+#include "ShooterGame.h"
 #include "ShooterGameLoadingScreen.h"
 #include "ShooterStyle.h"
 #include "ShooterMenuSoundsWidgetStyle.h"
 #include "ShooterGameInstance.h"
 #include "SlateBasics.h"
 #include "SlateExtras.h"
-#include "GenericPlatformChunkInstall.h"
+#include "GenericPlatform/GenericPlatformChunkInstall.h"
 #include "Online/ShooterOnlineGameSettings.h"
+#include "OnlineSubsystemSessionSettings.h"
 #include "SShooterConfirmationDialog.h"
 #include "ShooterMenuItemWidgetStyle.h"
 #include "ShooterGameUserSettings.h"
 #include "ShooterGameViewportClient.h"
-#include "ShooterPersistentUser.h"
+#include "Player/ShooterPersistentUser.h"
 #include "Player/ShooterLocalPlayer.h"
 
 #define LOCTEXT_NAMESPACE "ShooterGame.HUD.Menu"
@@ -28,16 +29,29 @@ static const int DefaultTDMMap = 1;
 static const int DefaultFFAMap = 0; 
 static const float QuickmatchUIAnimationTimeDuration = 30.f;
 
+#define SETTING_GAMEMODE FName(TEXT("GAMEMODE"))
+#define SETTING_MAPNAME FName(TEXT("MAPNAME"))
+#define SETTING_MATCHING_HOPPER FName(TEXT("MATCHMAKING_HOPPER"))
+#define SETTING_MATCHING_TIMEOUT FName(TEXT("MATCHMAKING_TIMEOUT"))
+#define SETTING_SESSION_TEMPLATE_NAME FName(TEXT("SESSIONTEMPLATENAME"))
+
+#define SEARCH_XBOX_LIVE_HOPPER_NAME FName(TEXT("HOPPERNAM"))
+#define SEARCH_XBOX_LIVE_SESSION_TEMPLATE_NAME FName(TEXT("SESSIONTEMPLATENAME"))
+
 //use an EMap index, get back the ChunkIndex that map should be part of.
 //Instead of this mapping we should really use the AssetRegistry to query for chunk mappings, but maps aren't members of the AssetRegistry yet.
 static const int ChunkMapping[] = { 1, 2 };
 
-#if PLATFORM_PS4
-#	define QUICKMATCH_SUPPORTED 1
-#elif PLATFORM_XBOXONE
-#	define QUICKMATCH_SUPPORTED 1
+#if PLATFORM_SWITCH
+#	define LOGIN_REQUIRED_FOR_ONLINE_PLAY 1
 #else
-#	define QUICKMATCH_SUPPORTED 1
+#	define LOGIN_REQUIRED_FOR_ONLINE_PLAY 0
+#endif
+
+#if PLATFORM_SWITCH
+#	define CONSOLE_LAN_SUPPORTED 1
+#else
+#	define CONSOLE_LAN_SUPPORTED 0
 #endif
 
 FShooterMainMenu::~FShooterMainMenu()
@@ -67,10 +81,11 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 	
 	// read user settings
 #if SHOOTER_CONSOLE_UI
-	bIsLanMatch = false;
+	bIsLanMatch = FParse::Param(FCommandLine::Get(), TEXT("forcelan"));
 #else
 	UShooterGameUserSettings* const UserSettings = CastChecked<UShooterGameUserSettings>(GEngine->GetGameUserSettings());
 	bIsLanMatch = UserSettings->IsLanMatch();
+	bIsDedicatedServer = UserSettings->IsDedicatedServer();
 #endif
 
 	BotsCountOpt = 1;
@@ -90,13 +105,13 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 	}
 	
 	TArray<FText> MapList;
-	for (int32 i = 0; i < ARRAY_COUNT(MapNames); ++i)
+	for (int32 i = 0; i < std::size(MapNames); ++i)
 	{
 		MapList.Add(FText::FromString(MapNames[i]));		
 	}
 
 	TArray<FText> JoinMapList;
-	for (int32 i = 0; i < ARRAY_COUNT(JoinMapNames); ++i)
+	for (int32 i = 0; i < std::size(JoinMapNames); ++i)
 	{
 		JoinMapList.Add(FText::FromString(JoinMapNames[i]));
 	}
@@ -113,6 +128,9 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 	//Now that we are here, build our menu 
 	MenuWidget.Reset();
 	MenuWidgetContainer.Reset();
+
+	TArray<FString> Keys;
+	GConfig->GetSingleLineArray(TEXT("/Script/SwitchRuntimeSettings.SwitchRuntimeSettings"), TEXT("LeaderboardMap"), Keys, GEngineIni);
 
 	if (GEngine && GEngine->GameViewport)
 	{		
@@ -178,9 +196,8 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 			MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("HostCustom", "HOST CUSTOM"), this, &FShooterMainMenu::OnHostOnlineSelected);
 
 			// submenu under "HOST ONLINE"
-			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDM", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
-
-			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
+			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
+			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSPV2(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
 			NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
 
 			HostOnlineMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
@@ -195,21 +212,19 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 			MenuHelper::AddCustomMenuItem(JoinServerItem,SAssignNew(ServerListWidget,SShooterServerList).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
 		}
 
-#if QUICKMATCH_SUPPORTED
 		// QUICK MATCH menu option
 		{
 			MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("QuickMatch", "QUICK MATCH"), this, &FShooterMainMenu::OnQuickMatchSelected);
 		}
-#endif
 
 		// HOST OFFLINE menu option
 		{
 			MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("PlayOffline", "PLAY OFFLINE"),this, &FShooterMainMenu::OnHostOfflineSelected);
 
 			// submenu under "HOST OFFLINE"
-			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDM", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
+			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
 
-			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
+			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSPV2(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
 			NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
 
 			HostOfflineMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
@@ -219,15 +234,23 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 
 		// HOST ONLINE menu option
 		{
-			MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("HostOnline", "HOST ONLINE"), this, &FShooterMainMenu::OnHostOnlineSelected);
+			HostOnlineMenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("HostOnline", "HOST ONLINE"), this, &FShooterMainMenu::OnHostOnlineSelected);
 
 			// submenu under "HOST ONLINE"
-			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDM", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
+#if LOGIN_REQUIRED_FOR_ONLINE_PLAY
+			MenuHelper::AddMenuItemSP(HostOnlineMenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelectedHostOnlineLoginRequired);
+#else
+			MenuHelper::AddMenuItemSP(HostOnlineMenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelectedHostOnline);
+#endif
 
-			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
+			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(HostOnlineMenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);
 			NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
 
-			HostOnlineMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
+			HostOnlineMapOption = MenuHelper::AddMenuOption(HostOnlineMenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
+#if CONSOLE_LAN_SUPPORTED
+			HostLANItem = MenuHelper::AddMenuOptionSP(HostOnlineMenuItem, LOCTEXT("LanMatch", "LAN"), OnOffList, this, &FShooterMainMenu::LanMatchChanged);
+			HostLANItem->SelectedMultiChoice = bIsLanMatch;
+#endif
 		}
 
 		// HOST OFFLINE menu option
@@ -235,7 +258,7 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 			MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("HostOffline", "HOST OFFLINE"),this, &FShooterMainMenu::OnHostOfflineSelected);
 
 			// submenu under "HOST OFFLINE"
-			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDM", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
+			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnSplitScreenSelected);
 
 			TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);				
 			NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;																
@@ -243,24 +266,35 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 			HostOfflineMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), MapList);
 		}
 
-#if QUICKMATCH_SUPPORTED
 		// QUICK MATCH menu option
 		{
+#if LOGIN_REQUIRED_FOR_ONLINE_PLAY
+			MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("QuickMatch", "QUICK MATCH"), this, &FShooterMainMenu::OnQuickMatchSelectedLoginRequired);
+#else
 			MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("QuickMatch", "QUICK MATCH"), this, &FShooterMainMenu::OnQuickMatchSelected);
-		}
 #endif
+		}
 
 		// JOIN menu option
 		{
 			// JOIN menu option
-			MenuItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Join", "JOIN"));
+			MenuItem = MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Join", "JOIN"), this, &FShooterMainMenu::OnJoinSelected);
 
 			// submenu under "join"
+#if LOGIN_REQUIRED_FOR_ONLINE_PLAY
+			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("Server", "SERVER"), this, &FShooterMainMenu::OnJoinServerLoginRequired);
+#else
 			MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("Server", "SERVER"), this, &FShooterMainMenu::OnJoinServer);
+#endif
 			JoinMapOption = MenuHelper::AddMenuOption(MenuItem, LOCTEXT("SELECTED_LEVEL", "Map"), JoinMapList);
 
 			// Server list widget that will be called up if appropriate
 			MenuHelper::AddCustomMenuItem(JoinServerItem,SAssignNew(ServerListWidget,SShooterServerList).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
+
+#if CONSOLE_LAN_SUPPORTED
+			JoinLANItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("LanMatch", "LAN"), OnOffList, this, &FShooterMainMenu::LanMatchChanged);
+			JoinLANItem->SelectedMultiChoice = bIsLanMatch;
+#endif
 		}
 
 #else
@@ -269,8 +303,8 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 		MenuItem = MenuHelper::AddMenuItem(RootMenuItem, LOCTEXT("Host", "HOST"));
 
 		// submenu under "host"
-		MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("FFA", "FREE FOR ALL"), this, &FShooterMainMenu::OnUIHostFreeForAll);
-		MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDM", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnUIHostTeamDeathMatch);
+		 MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("FFALong", "FREE FOR ALL"), this, &FShooterMainMenu::OnUIHostFreeForAll);
+		 MenuHelper::AddMenuItemSP(MenuItem, LOCTEXT("TDMLong", "TEAM DEATHMATCH"), this, &FShooterMainMenu::OnUIHostTeamDeathMatch);
 
 		TSharedPtr<FShooterMenuItem> NumberOfBotsOption = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("NumberOfBots", "NUMBER OF BOTS"), BotsCountList, this, &FShooterMainMenu::BotCountOptionChanged);
 		NumberOfBotsOption->SelectedMultiChoice = BotsCountOpt;
@@ -291,14 +325,22 @@ void FShooterMainMenu::Construct(TWeakObjectPtr<UShooterGameInstance> _GameInsta
 		JoinLANItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("LanMatch", "LAN"), OnOffList, this, &FShooterMainMenu::LanMatchChanged);
 		JoinLANItem->SelectedMultiChoice = bIsLanMatch;
 
+		DedicatedItem = MenuHelper::AddMenuOptionSP(MenuItem, LOCTEXT("Dedicated", "Dedicated"), OnOffList, this, &FShooterMainMenu::DedicatedServerChanged);
+		DedicatedItem->SelectedMultiChoice = bIsDedicatedServer;
+
 		// Server list widget that will be called up if appropriate
 		MenuHelper::AddCustomMenuItem(JoinServerItem,SAssignNew(ServerListWidget,SShooterServerList).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
 #endif
 
 		// Leaderboards
-#if !SHOOTER_CONSOLE_UI
 		MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Leaderboards", "LEADERBOARDS"), this, &FShooterMainMenu::OnShowLeaderboard);
 		MenuHelper::AddCustomMenuItem(LeaderboardItem,SAssignNew(LeaderboardWidget,SShooterLeaderboard).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
+
+		// Purchases
+		MenuHelper::AddMenuItemSP(RootMenuItem, LOCTEXT("Store", "ONLINE STORE"), this, &FShooterMainMenu::OnShowOnlineStore);
+		MenuHelper::AddCustomMenuItem(OnlineStoreItem, SAssignNew(OnlineStoreWidget, SShooterOnlineStore).OwnerWidget(MenuWidget).PlayerOwner(GetPlayerOwner()));
+
+#if !SHOOTER_CONSOLE_UI
 
 		// Demos
 		{
@@ -335,8 +377,20 @@ void FShooterMainMenu::AddMenuToGameViewport()
 {
 	if (GEngine && GEngine->GameViewport)
 	{
-		UGameViewportClient* const GVC = GEngine->GameViewport;
+		UGameViewportClient* GVC = GEngine->GameViewport;
 		GVC->AddViewportWidgetContent(MenuWidgetContainer.ToSharedRef());
+
+		// Set mouse mode via player controller
+		UWorld* World = GVC->GetWorld();
+		if (World)
+		{
+			APlayerController* PC = World->GetFirstPlayerController();
+			if (PC)
+			{
+				PC->SetShowMouseCursor(true);
+				PC->SetInputMode(FInputModeUIOnly());
+			}
+		}
 	}
 }
 
@@ -385,7 +439,7 @@ void FShooterMainMenu::Tick(float DeltaSeconds)
 		EMap SelectedMap = GetSelectedMap();
 		// use assetregistry when maps are added to it.
 		int32 MapChunk = ChunkMapping[(int)SelectedMap];
-		EChunkLocation::Type ChunkLocation = ChunkInstaller->GetChunkLocation(MapChunk);
+		EChunkLocation::Type ChunkLocation = ChunkInstaller->GetPakchunkLocation(MapChunk);
 
 		FText UpdatedText;
 		bool bUpdateText = false;
@@ -405,7 +459,7 @@ void FShooterMainMenu::Tick(float DeltaSeconds)
 
 		if (bUpdateText)
 		{
-			if (GameInstance.IsValid() && GameInstance->GetIsOnline() && HostOnlineMapOption.IsValid())
+			if (GameInstance.IsValid() && GameInstance->GetOnlineMode() != EOnlineMode::Offline && HostOnlineMapOption.IsValid())
 			{
 				HostOnlineMapOption->SetText(UpdatedText);
 			}
@@ -417,19 +471,9 @@ void FShooterMainMenu::Tick(float DeltaSeconds)
 	}
 }
 
-bool FShooterMainMenu::IsTickable() const
-{
-	return true;
-}
-
 TStatId FShooterMainMenu::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(FShooterMainMenu, STATGROUP_Tickables);
-}
-
-bool FShooterMainMenu::IsTickableWhenPaused() const
-{
-	return true;
 }
 
 void FShooterMainMenu::OnMenuHidden()
@@ -445,6 +489,23 @@ void FShooterMainMenu::OnMenuHidden()
 #endif
 }
 
+
+void FShooterMainMenu::OnQuickMatchSelectedLoginRequired()
+{
+	IOnlineIdentityPtr Identity = IOnlineSubsystem::Get()->GetIdentityInterface();
+
+	int32 ControllerId = GetPlayerOwner()->GetControllerId();
+
+	OnLoginCompleteDelegateHandle = Identity->AddOnLoginCompleteDelegate_Handle(ControllerId, FOnLoginCompleteDelegate::CreateRaw(this, &FShooterMainMenu::OnLoginCompleteQuickmatch));
+	Identity->Login(ControllerId, FOnlineAccountCredentials());
+}
+
+void FShooterMainMenu::OnLoginCompleteQuickmatch(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
+{
+	IOnlineSubsystem::Get()->GetIdentityInterface()->ClearOnLoginCompleteDelegate_Handle(LocalUserNum, OnLoginCompleteDelegateHandle);
+
+	OnQuickMatchSelected();
+}
 
 void FShooterMainMenu::OnQuickMatchSelected()
 {
@@ -467,16 +528,15 @@ void FShooterMainMenu::OnUserCanPlayOnlineQuickMatch(const FUniqueNetId& UserId,
 	{
 		if (GameInstance.IsValid())
 		{
-			GameInstance->SetIsOnline(true);
+			GameInstance->SetOnlineMode(EOnlineMode::Online);
 		}
 
 		MatchType = EMatchType::Quick;
 
 		SplitScreenLobbyWidget->SetIsJoining(false);
-		SplitScreenLobbyWidget->SetIsOnline(true);
 
 		// Skip splitscreen for PS4
-#if PLATFORM_PS4
+#if PLATFORM_PS4 || MAX_LOCAL_PLAYERS == 1
 		BeginQuickMatchSearch();
 #else
 		UGameViewportClient* const GVC = GEngine->GameViewport;
@@ -541,21 +601,38 @@ void FShooterMainMenu::BeginQuickMatchSearch()
 
 	// Perform matchmaking with all local players
 	TArray<TSharedRef<const FUniqueNetId>> LocalPlayerIds;
-	for (int i = 0; i < GameInstance->GetNumLocalPlayers(); ++i)
+	for (int32 i = 0; i < GameInstance->GetNumLocalPlayers(); ++i)
 	{
-		auto PlayerId = GameInstance->GetLocalPlayerByIndex(i)->GetPreferredUniqueNetId();
+		FUniqueNetIdRepl PlayerId = GameInstance->GetLocalPlayerByIndex(i)->GetPreferredUniqueNetId();
 		if (PlayerId.IsValid())
 		{
-			LocalPlayerIds.Add(PlayerId.ToSharedRef());
+			LocalPlayerIds.Add((*PlayerId).AsShared());
 		}
 	}
 
-	if (!Sessions->StartMatchmaking(LocalPlayerIds, GameSessionName, SessionSettings, QuickMatchSearchSettingsRef))
+	if (!Sessions->StartMatchmaking(LocalPlayerIds, NAME_GameSession, SessionSettings, QuickMatchSearchSettingsRef))
 	{
-		OnMatchmakingComplete(GameSessionName, false);
+		OnMatchmakingComplete(NAME_GameSession, false);
 	}
 }
 
+
+void FShooterMainMenu::OnSplitScreenSelectedHostOnlineLoginRequired()
+{
+	IOnlineIdentityPtr Identity = IOnlineSubsystem::Get()->GetIdentityInterface();
+	int32 ControllerId = GetPlayerOwner()->GetControllerId();
+
+	if (bIsLanMatch)
+	{
+		Identity->Logout(ControllerId);
+		OnSplitScreenSelected();
+	}
+	else
+	{
+		OnLoginCompleteDelegateHandle = Identity->AddOnLoginCompleteDelegate_Handle(ControllerId, FOnLoginCompleteDelegate::CreateRaw(this, &FShooterMainMenu::OnLoginCompleteHostOnline));
+		Identity->Login(ControllerId, FOnlineAccountCredentials());
+	}
+}
 
 void FShooterMainMenu::OnSplitScreenSelected()
 {
@@ -565,58 +642,50 @@ void FShooterMainMenu::OnSplitScreenSelected()
 	}
 
 	RemoveMenuFromGameViewport();
-#if PLATFORM_PS4
-	if (GameInstance.IsValid())
+
+#if PLATFORM_PS4 || MAX_LOCAL_PLAYERS == 1
+	if (GameInstance.IsValid() && GameInstance->GetOnlineMode() == EOnlineMode::Online)
 	{
-		if (GameInstance->GetIsOnline())
-		{
-			OnUIHostTeamDeathMatch();
-		}
-		else
-		{
-			UGameViewportClient* const GVC = GEngine->GameViewport;
-			GVC->AddViewportWidgetContent(SplitScreenLobbyWidgetContainer.ToSharedRef());
-
-			SplitScreenLobbyWidget->Clear();
-			FSlateApplication::Get().SetKeyboardFocus(SplitScreenLobbyWidget);
-		}
+		OnUIHostTeamDeathMatch();
 	}
-#else
-	UGameViewportClient* const GVC = GEngine->GameViewport;
-	GVC->AddViewportWidgetContent(SplitScreenLobbyWidgetContainer.ToSharedRef());
-
-	SplitScreenLobbyWidget->Clear();
-	FSlateApplication::Get().SetKeyboardFocus(SplitScreenLobbyWidget);
+	else
 #endif
+	{
+		UGameViewportClient* const GVC = GEngine->GameViewport;
+		GVC->AddViewportWidgetContent(SplitScreenLobbyWidgetContainer.ToSharedRef());
+
+		SplitScreenLobbyWidget->Clear();
+		FSlateApplication::Get().SetKeyboardFocus(SplitScreenLobbyWidget);
+	}
 }
 
 void FShooterMainMenu::OnHostOnlineSelected()
 {
 #if SHOOTER_CONSOLE_UI
-	if ( !ValidatePlayerForOnlinePlay(GetPlayerOwner()) )
+	if (!ValidatePlayerIsSignedIn(GetPlayerOwner()))
 	{
 		return;
 	}
 #endif
 
-	StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayOnlineHost));
+	MatchType = EMatchType::Custom;
+
+	EOnlineMode NewOnlineMode = bIsLanMatch ? EOnlineMode::LAN : EOnlineMode::Online;
+	if (GameInstance.IsValid())
+	{
+		GameInstance->SetOnlineMode(NewOnlineMode);
+	}
+	SplitScreenLobbyWidget->SetIsJoining(false);
+	MenuWidget->EnterSubMenu();
 }
 
-void FShooterMainMenu::OnUserCanPlayOnlineHost(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults)
+void FShooterMainMenu::OnUserCanPlayHostOnline(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults)
 {
 	CleanupOnlinePrivilegeTask();
 	MenuWidget->LockControls(false);
 	if (PrivilegeResults == (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures)	
 	{
-		MatchType = EMatchType::Custom;
-
-		if (GameInstance.IsValid())
-		{
-			GameInstance->SetIsOnline(true);
-		}
-		SplitScreenLobbyWidget->SetIsJoining(false);
-		SplitScreenLobbyWidget->SetIsOnline(true);
-		MenuWidget->EnterSubMenu();		
+		OnSplitScreenSelected();
 	}
 	else if (GameInstance.IsValid())
 	{
@@ -624,18 +693,36 @@ void FShooterMainMenu::OnUserCanPlayOnlineHost(const FUniqueNetId& UserId, EUser
 	}
 }
 
+void FShooterMainMenu::OnLoginCompleteHostOnline(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
+{
+	IOnlineSubsystem::Get()->GetIdentityInterface()->ClearOnLoginCompleteDelegate_Handle(LocalUserNum, OnLoginCompleteDelegateHandle);
+
+	OnSplitScreenSelectedHostOnline();
+}
+
+void FShooterMainMenu::OnSplitScreenSelectedHostOnline()
+{
+#if SHOOTER_CONSOLE_UI
+	if (!ValidatePlayerForOnlinePlay(GetPlayerOwner()))
+	{
+		return;
+	}
+#endif
+
+	StartOnlinePrivilegeTask(IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate::CreateSP(this, &FShooterMainMenu::OnUserCanPlayHostOnline));
+}
 void FShooterMainMenu::StartOnlinePrivilegeTask(const IOnlineIdentity::FOnGetUserPrivilegeCompleteDelegate& Delegate)
 {
 	if (GameInstance.IsValid())
 	{
 		// Lock controls for the duration of the async task
 		MenuWidget->LockControls(true);
-		TSharedPtr<const FUniqueNetId> UserId;
+		FUniqueNetIdRepl UserId;
 		if (PlayerOwner.IsValid())
 		{
 			UserId = PlayerOwner->GetPreferredUniqueNetId();
 		}
-		GameInstance->StartOnlinePrivilegeTask(Delegate, EUserPrivileges::CanPlayOnline, UserId);
+		GameInstance->StartOnlinePrivilegeTask(Delegate, EUserPrivileges::CanPlayOnline, UserId.GetUniqueNetId());
 	}	
 }
 
@@ -651,12 +738,16 @@ void FShooterMainMenu::OnHostOfflineSelected()
 {
 	MatchType = EMatchType::Custom;
 
+#if LOGIN_REQUIRED_FOR_ONLINE_PLAY
+	IOnlineSubsystem::Get()->GetIdentityInterface()->Logout(GetPlayerOwner()->GetControllerId());
+#endif
+
 	if (GameInstance.IsValid())
 	{
-		GameInstance->SetIsOnline(false);
+		GameInstance->SetOnlineMode(EOnlineMode::Offline);
 	}
 	SplitScreenLobbyWidget->SetIsJoining( false );
-	SplitScreenLobbyWidget->SetIsOnline( false );
+
 	MenuWidget->EnterSubMenu();
 }
 
@@ -686,13 +777,25 @@ FReply FShooterMainMenu::OnSplitScreenPlay()
 
 				FSlateApplication::Get().SetKeyboardFocus(MenuWidget);	
 
+				// Grab the map filter if there is one
+				FString SelectedMapFilterName = TEXT("ANY");
+				if (JoinMapOption.IsValid())
+				{
+					int32 FilterChoice = JoinMapOption->SelectedMultiChoice;
+					if (FilterChoice != INDEX_NONE)
+					{
+						SelectedMapFilterName = JoinMapOption->MultiChoice[FilterChoice].ToString();
+					}
+				}
+
+
 				MenuWidget->NextMenu = JoinServerItem->SubMenu;
-				ServerListWidget->BeginServerSearch(bIsLanMatch, TEXT("ANY"));
+				ServerListWidget->BeginServerSearch(bIsLanMatch, bIsDedicatedServer, SelectedMapFilterName);
 				ServerListWidget->UpdateServerList();
 				MenuWidget->EnterSubMenu();
 #else
 				SplitScreenLobbyWidget->NextMenu = JoinServerItem->SubMenu;
-				ServerListWidget->BeginServerSearch(bIsLanMatch, TEXT("ANY"));
+				ServerListWidget->BeginServerSearch(bIsLanMatch, bIsDedicatedServer, SelectedMapFilterName);
 				ServerListWidget->UpdateServerList();
 				SplitScreenLobbyWidget->EnterSubMenu();
 #endif
@@ -747,7 +850,7 @@ void FShooterMainMenu::HelperQuickMatchSearchingUICancel(bool bShouldRemoveSessi
 			FSlateApplication::Get().SetKeyboardFocus(QuickMatchStoppingWidgetContainer);
 			
 			OnCancelMatchmakingCompleteDelegateHandle = Sessions->AddOnCancelMatchmakingCompleteDelegate_Handle(OnCancelMatchmakingCompleteDelegate);
-			Sessions->CancelMatchmaking(*PlayerOwner->GetPreferredUniqueNetId(), GameSessionName);
+			Sessions->CancelMatchmaking(*PlayerOwner->GetPreferredUniqueNetId(), NAME_GameSession);
 		}
 	}
 	else
@@ -815,7 +918,7 @@ void FShooterMainMenu::OnMatchmakingComplete(FName SessionName, bool bWasSuccess
 		{
 			if (PlayerOwner.IsValid() && PlayerOwner->GetPreferredUniqueNetId().IsValid())
 			{
-				Sessions->DestroySession(GameSessionName);
+				Sessions->DestroySession(NAME_GameSession);
 			}
 		}
 		return;
@@ -889,7 +992,7 @@ void FShooterMainMenu::OnMatchmakingComplete(FName SessionName, bool bWasSuccess
 
 FShooterMainMenu::EMap FShooterMainMenu::GetSelectedMap() const
 {
-	if (GameInstance.IsValid() && GameInstance->GetIsOnline() && HostOnlineMapOption.IsValid())
+	if (GameInstance.IsValid() && GameInstance->GetOnlineMode() != EOnlineMode::Offline && HostOnlineMapOption.IsValid())
 	{
 		return (EMap)HostOnlineMapOption->SelectedMultiChoice;
 	}
@@ -914,10 +1017,17 @@ void FShooterMainMenu::OnMenuGoBack(MenuPtr Menu)
 		ShooterOptions->RevertChanges();
 	}
 
+	// In case a Play Together event was received, don't act on it
+	// if the player changes their mind.
+	if (HostOnlineMenuItem.IsValid() && HostOnlineMenuItem->SubMenu == Menu)
+	{
+		GameInstance->ResetPlayTogetherInfo();
+	}
+
 	// if we've backed all the way out we need to make sure online is false.
 	if (MenuWidget->GetMenuLevel() == 1)
 	{
-		GameInstance->SetIsOnline(false);
+		GameInstance->SetOnlineMode(EOnlineMode::Offline);
 	}
 }
 
@@ -943,6 +1053,21 @@ void FShooterMainMenu::LanMatchChanged(TSharedPtr<FShooterMenuItem> MenuItem, in
 	bIsLanMatch = MultiOptionIndex > 0;
 	UShooterGameUserSettings* UserSettings = CastChecked<UShooterGameUserSettings>(GEngine->GetGameUserSettings());
 	UserSettings->SetLanMatch(bIsLanMatch);
+
+	EOnlineMode NewOnlineMode = bIsLanMatch ? EOnlineMode::LAN : EOnlineMode::Online;
+	if (GameInstance.IsValid())
+	{
+		GameInstance->SetOnlineMode(NewOnlineMode);
+	}
+}
+
+void FShooterMainMenu::DedicatedServerChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex)
+{
+	check(DedicatedItem.IsValid());
+	DedicatedItem->SelectedMultiChoice = MultiOptionIndex;
+	bIsDedicatedServer = MultiOptionIndex > 0;
+	UShooterGameUserSettings* UserSettings = CastChecked<UShooterGameUserSettings>(GEngine->GetGameUserSettings());
+	UserSettings->SetDedicatedServer(bIsDedicatedServer);
 }
 
 void FShooterMainMenu::RecordDemoChanged(TSharedPtr<FShooterMenuItem> MenuItem, int32 MultiOptionIndex)
@@ -977,7 +1102,7 @@ void FShooterMainMenu::OnUIHostFreeForAll()
 #if !SHOOTER_CONSOLE_UI
 	if (GameInstance.IsValid())
 	{
-		GameInstance->SetIsOnline(true);
+		GameInstance->SetOnlineMode(bIsLanMatch ? EOnlineMode::LAN : EOnlineMode::Online);
 	}
 #endif
 
@@ -1008,7 +1133,7 @@ void FShooterMainMenu::OnUIHostTeamDeathMatch()
 #if !SHOOTER_CONSOLE_UI
 	if (GameInstance.IsValid())
 	{
-		GameInstance->SetIsOnline(true);
+		GameInstance->SetOnlineMode(bIsLanMatch ? EOnlineMode::LAN : EOnlineMode::Online);
 	}
 #endif
 
@@ -1027,7 +1152,7 @@ void FShooterMainMenu::HostGame(const FString& GameType)
 {	
 	if (ensure(GameInstance.IsValid()) && GetPlayerOwner() != NULL)
 	{
-		FString const StartURL = FString::Printf(TEXT("/Game/Maps/%s?game=%s%s%s?%s=%d%s"), *GetMapName(), *GameType, GameInstance->GetIsOnline() ? TEXT("?listen") : TEXT(""), bIsLanMatch ? TEXT("?bIsLanMatch") : TEXT(""), *AShooterGameMode::GetBotsCountOptionName(), BotsCountOpt, bIsRecordingDemo ? TEXT("?DemoRec") : TEXT("") );
+		FString const StartURL = FString::Printf(TEXT("/Game/Maps/%s?game=%s%s%s?%s=%d%s"), *GetMapName(), *GameType, GameInstance->GetOnlineMode() != EOnlineMode::Offline ? TEXT("?listen") : TEXT(""), GameInstance->GetOnlineMode() == EOnlineMode::LAN ? TEXT("?bIsLanMatch") : TEXT(""), *AShooterGameMode::GetBotsCountOptionName(), BotsCountOpt, bIsRecordingDemo ? TEXT("?DemoRec") : TEXT("") );
 
 		// Game instance will handle success, failure and dialogs
 		GameInstance->HostGame(GetPlayerOwner(), GameType, StartURL);
@@ -1036,12 +1161,12 @@ void FShooterMainMenu::HostGame(const FString& GameType)
 
 void FShooterMainMenu::HostFreeForAll()
 {
-	HostGame(LOCTEXT("FFA", "FFA").ToString());
+	HostGame(TEXT("FFA"));
 }
 
 void FShooterMainMenu::HostTeamDeathMatch()
-{	
-	HostGame(LOCTEXT("TDM", "TDM").ToString());
+{
+	HostGame(TEXT("TDM"));
 }
 
 FReply FShooterMainMenu::OnConfirm()
@@ -1070,6 +1195,52 @@ bool FShooterMainMenu::ValidatePlayerForOnlinePlay(ULocalPlayer* LocalPlayer)
 	return GameInstance->ValidatePlayerForOnlinePlay(LocalPlayer);
 }
 
+bool FShooterMainMenu::ValidatePlayerIsSignedIn(ULocalPlayer* LocalPlayer)
+{
+	if (!ensure(GameInstance.IsValid()))
+	{
+		return false;
+	}
+
+	return GameInstance->ValidatePlayerIsSignedIn(LocalPlayer);
+}
+
+void FShooterMainMenu::OnJoinServerLoginRequired()
+{
+	IOnlineIdentityPtr Identity = IOnlineSubsystem::Get()->GetIdentityInterface();
+	int32 ControllerId = GetPlayerOwner()->GetControllerId();
+
+	if (bIsLanMatch)
+	{
+		Identity->Logout(ControllerId);
+		OnUserCanPlayOnlineJoin(*GetPlayerOwner()->GetCachedUniqueNetId(), EUserPrivileges::CanPlayOnline, (uint32)IOnlineIdentity::EPrivilegeResults::NoFailures);
+	}
+	else
+	{
+		OnLoginCompleteDelegateHandle = Identity->AddOnLoginCompleteDelegate_Handle(ControllerId, FOnLoginCompleteDelegate::CreateRaw(this, &FShooterMainMenu::OnLoginCompleteJoin));
+		Identity->Login(ControllerId, FOnlineAccountCredentials());
+	}
+}
+
+void FShooterMainMenu::OnLoginCompleteJoin(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
+{
+	IOnlineSubsystem::Get()->GetIdentityInterface()->ClearOnLoginCompleteDelegate_Handle(LocalUserNum, OnLoginCompleteDelegateHandle);
+
+	OnJoinServer();
+}
+
+void FShooterMainMenu::OnJoinSelected()
+{
+#if SHOOTER_CONSOLE_UI
+	if (!ValidatePlayerIsSignedIn(GetPlayerOwner()))
+	{
+		return;
+	}
+#endif
+
+	MenuWidget->EnterSubMenu();
+}
+
 void FShooterMainMenu::OnJoinServer()
 {
 #if SHOOTER_CONSOLE_UI
@@ -1095,12 +1266,12 @@ void FShooterMainMenu::OnUserCanPlayOnlineJoin(const FUniqueNetId& UserId, EUser
 
 		if (GameInstance.IsValid())
 		{
-			GameInstance->SetIsOnline(true);
+			GameInstance->SetOnlineMode(bIsLanMatch ? EOnlineMode::LAN : EOnlineMode::Online);
 		}
 
 		MatchType = EMatchType::Custom;
 		// Grab the map filter if there is one
-		FString SelectedMapFilterName = MapNames[0];
+		FString SelectedMapFilterName("Any");
 		if( JoinMapOption.IsValid())
 		{
 			int32 FilterChoice = JoinMapOption->SelectedMultiChoice;
@@ -1112,13 +1283,13 @@ void FShooterMainMenu::OnUserCanPlayOnlineJoin(const FUniqueNetId& UserId, EUser
 
 #if SHOOTER_CONSOLE_UI
 		UGameViewportClient* const GVC = GEngine->GameViewport;
-#if PLATFORM_PS4
+#if PLATFORM_PS4 || MAX_LOCAL_PLAYERS == 1
 		// Show server menu (skip splitscreen)
 		AddMenuToGameViewport();
 		FSlateApplication::Get().SetKeyboardFocus(MenuWidget);
 
 		MenuWidget->NextMenu = JoinServerItem->SubMenu;
-		ServerListWidget->BeginServerSearch(bIsLanMatch, SelectedMapFilterName);
+		ServerListWidget->BeginServerSearch(bIsLanMatch, bIsDedicatedServer, SelectedMapFilterName);
 		ServerListWidget->UpdateServerList();
 		MenuWidget->EnterSubMenu();
 #else
@@ -1135,7 +1306,7 @@ void FShooterMainMenu::OnUserCanPlayOnlineJoin(const FUniqueNetId& UserId, EUser
 		MenuWidget->NextMenu = JoinServerItem->SubMenu;
 		//FString SelectedMapFilterName = JoinMapOption->MultiChoice[JoinMapOption->SelectedMultiChoice].ToString();
 
-		ServerListWidget->BeginServerSearch(bIsLanMatch, SelectedMapFilterName);
+		ServerListWidget->BeginServerSearch(bIsLanMatch, bIsDedicatedServer, SelectedMapFilterName);
 		ServerListWidget->UpdateServerList();
 		MenuWidget->EnterSubMenu();
 #endif
@@ -1149,7 +1320,21 @@ void FShooterMainMenu::OnUserCanPlayOnlineJoin(const FUniqueNetId& UserId, EUser
 void FShooterMainMenu::OnShowLeaderboard()
 {
 	MenuWidget->NextMenu = LeaderboardItem->SubMenu;
+#if LOGIN_REQUIRED_FOR_ONLINE_PLAY
+	LeaderboardWidget->ReadStatsLoginRequired();
+#else
 	LeaderboardWidget->ReadStats();
+#endif
+	MenuWidget->EnterSubMenu();
+}
+
+void FShooterMainMenu::OnShowOnlineStore()
+{
+	MenuWidget->NextMenu = OnlineStoreItem->SubMenu;
+#if LOGIN_REQUIRED_FOR_ONLINE_PLAY
+	UE_LOG(LogOnline, Warning, TEXT("You need to be logged in before using the store"));
+#endif
+	OnlineStoreWidget->BeginGettingOffers();
 	MenuWidget->EnterSubMenu();
 }
 
@@ -1209,11 +1394,11 @@ bool FShooterMainMenu::IsMapReady() const
 		EMap SelectedMap = GetSelectedMap();
 		// should use the AssetRegistry as soon as maps are added to the AssetRegistry
 		int32 MapChunk = ChunkMapping[(int)SelectedMap];
-		EChunkLocation::Type ChunkLocation = ChunkInstaller->GetChunkLocation(MapChunk);
-		if (ChunkLocation == EChunkLocation::NotAvailable)
-		{			
-			bReady = false;
-		}
+		EChunkLocation::Type ChunkLocation = ChunkInstaller->GetPakchunkLocation(MapChunk);
+		 if (ChunkLocation == EChunkLocation::NotAvailable)
+		 {			
+		 	bReady = false;
+		 }
 	}
 	return bReady;
 }
@@ -1222,6 +1407,12 @@ UShooterPersistentUser* FShooterMainMenu::GetPersistentUser() const
 {
 	UShooterLocalPlayer* const ShooterLocalPlayer = Cast<UShooterLocalPlayer>(GetPlayerOwner());
 	return ShooterLocalPlayer ? ShooterLocalPlayer->GetPersistentUser() : nullptr;
+}
+
+UWorld* FShooterMainMenu::GetTickableGameObjectWorld() const
+{
+	ULocalPlayer* LocalPlayerOwner = GetPlayerOwner();
+	return (LocalPlayerOwner ? LocalPlayerOwner->GetWorld() : nullptr);
 }
 
 ULocalPlayer* FShooterMainMenu::GetPlayerOwner() const
@@ -1252,6 +1443,12 @@ void FShooterMainMenu::OnCancelMatchmakingComplete(FName SessionName, bool bWasS
 	GVC->RemoveViewportWidgetContent(QuickMatchStoppingWidgetContainer.ToSharedRef());
 	AddMenuToGameViewport();
 	FSlateApplication::Get().SetKeyboardFocus(MenuWidget);
+}
+
+void FShooterMainMenu::OnPlayTogetherEventReceived()
+{
+	HostOnlineMenuItem->Widget->SetMenuItemActive(true);
+	MenuWidget->ConfirmMenuItem();
 }
 
 #undef LOCTEXT_NAMESPACE

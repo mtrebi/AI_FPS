@@ -1,8 +1,15 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterOnlineGameSettings.h"
+#include "ShooterGame.h"
 
+#define SEARCH_PRESENCE               FName(TEXT("PRESENCESEARCH"))
+#define SEARCH_DEDICATED_ONLY         FName(TEXT("DEDICATEDONLY"))
+#define SEARCH_EMPTY_SERVERS_ONLY     FName(TEXT("EMPTYSERVERSONLY"))
+#define SEARCH_NONEMPTY_SERVERS_ONLY  FName(TEXT("NONEMPTYSERVERSONLY"))
+#define SEARCH_USER                   FName(TEXT("USERSEARCH"))
+#define SEARCH_KEYWORDS               FName(TEXT("KEYWORDS"))
+#define SEARCH_MATCHMAKING_QUEUE      FName(TEXT("MATCHMAKINGQUEUE"))
 
 FShooterOnlineSessionSettings::FShooterOnlineSessionSettings(bool bIsLAN, bool bIsPresence, int32 MaxNumPlayers)
 {

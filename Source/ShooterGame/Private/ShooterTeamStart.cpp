@@ -1,7 +1,8 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterTeamStart.h"
+#include "ShooterGame.h"
+
 
 AShooterTeamStart::AShooterTeamStart(const FObjectInitializer& ObjectInitializer) 
 	: Super(ObjectInitializer) 

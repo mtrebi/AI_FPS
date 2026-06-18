@@ -1,7 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
-#include "Public/Navigation/MyTexture2D.h"
+#include "Navigation/MyTexture2D.h"
+#include "Navigation/MyRecastNavMesh.h"
 #include "MyInfluenceMap.generated.h"
 
 struct InfluenceTile {
@@ -17,9 +18,9 @@ class SHOOTERGAME_API AMyInfluenceMap : public AActor
 
 private:
 	// How much bias the update towards the existing value compared to the new value? 1 to Historic, 0 to Prediction
-	float Momentum;
+	float Momentumm;
 	// How quickly the value decay with distance.
-	float Decay;
+	float Decayy;
 
 	float UpdateFrequency;
 
@@ -33,7 +34,7 @@ private:
 	// Bitmap representation of influences
 	MyTexture2D* BaseTexture;
 	MyTexture2D* UpdatedTexture;
-
+	
 	// Temp
 	TMap<FString, TArray<Triangle>> * BotsVisibilities;
 

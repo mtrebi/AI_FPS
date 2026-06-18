@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -12,15 +12,29 @@ struct FShooterGameLoadingScreenBrush : public FSlateDynamicImageBrush, public F
 	FShooterGameLoadingScreenBrush( const FName InTextureName, const FVector2D& InImageSize )
 		: FSlateDynamicImageBrush( InTextureName, InImageSize )
 	{
-		ResourceObject = LoadObject<UObject>( NULL, *InTextureName.ToString() );
+		SetResourceObject(LoadObject<UObject>( nullptr, *InTextureName.ToString() ));
 	}
-
+	
 	virtual void AddReferencedObjects(FReferenceCollector& Collector)
 	{
-		if( ResourceObject )
-		{
-			Collector.AddReferencedObject(ResourceObject);
-		}
+		FSlateBrush::AddReferencedObjects(Collector);
+	}
+
+	// // Ensure Slate/GC know about the UObject resource used by this brush
+	// virtual void AddReferencedObjects(FReferenceCollector& Collector) override
+	// {
+	// 	// Let the base brush add its references first
+	// 	FSlateBrush::AddReferencedObjects(Collector);
+	//
+	// 	// Explicitly add our resource object so the GC won't collect it
+	// 	UObject* Resource = GetResourceObject();
+	// 	Collector.AddReferencedObject(Resource);
+	// }
+
+	// Provide the required referencer name
+	virtual FString GetReferencerName() const override
+	{
+		return FString(TEXT("FShooterGameLoadingScreenBrush"));
 	}
 };
 
@@ -69,6 +83,10 @@ public:
 
 	//FTicker Funcs
 	virtual void Tick(float DeltaSeconds) override;	
+
+	virtual	void BeginDestroy() override;
+	virtual void DetachViewportClient() override;
+	void ReleaseSlateResources();
 
 #if WITH_EDITOR
 	virtual void DrawTransition(class UCanvas* Canvas) override;

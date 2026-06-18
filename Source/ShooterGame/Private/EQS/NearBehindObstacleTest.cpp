@@ -1,10 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/NearBehindObstacleTest.h"
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/Bots/ShooterBot.h"
-#include "Public/EQS/NearBehindObstacleTest.h"
+#include "Bots/ShooterBot.h"
+#include "Others/HelperMethods.h"
 
 
 UNearBehindObstacleTest::UNearBehindObstacleTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -31,7 +32,7 @@ void UNearBehindObstacleTest::RunTest(FEnvQueryInstance& QueryInstance) const
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	
 	// Get all behind cover points
 	TArray<FVector> LocationsBehindObstacles;
@@ -107,7 +108,7 @@ void UNearBehindObstacleTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	
 	// Score those positions that are nearer to behind obstacle points
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It){
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 
 		float CurrentDistance;
 		float MinDistance = 100000;
@@ -127,11 +128,11 @@ void UNearBehindObstacleTest::RunTest(FEnvQueryInstance& QueryInstance) const
 				//It.SetScore(TestPurpose, FilterType, Distance , MinThresholdValue, MaxThresholdValue);
 			}
 			else {
-				It.DiscardItem();
+				It.ForceItemState(EEnvItemStatus::Failed);
 			}
 		}
 		else {
-			It.DiscardItem();
+			It.ForceItemState(EEnvItemStatus::Failed);
 			//It.SetScore(TestPurpose, FilterType, MaxThresholdValue + 1, MinThresholdValue, MaxThresholdValue);
 		}
 	}

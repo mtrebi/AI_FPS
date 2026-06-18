@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -16,6 +16,7 @@ class AShooterPickup : public AActor
 	/** check if pawn can use this pickup */
 	virtual bool CanBePickedUp(class AShooterCharacter* TestPawn) const;
 
+protected:
 	/** initial setup */
 	virtual void BeginPlay() override;
 
@@ -23,8 +24,8 @@ private:
 	/** FX component */
 	UPROPERTY(VisibleDefaultsOnly, Category=Effects)
 	UParticleSystemComponent* PickupPSC;
-protected:
 
+protected:
 	/** FX of active pickup */
 	UPROPERTY(EditDefaultsOnly, Category=Effects)
 	UParticleSystem* ActiveFX;

@@ -1,13 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-#include "ShooterGame.h"
 
+#include "Navigation/MyRecastNavMesh.h"
+#include "ShooterGame.h"
 // recast includes
-#include "AI/Navigation/NavFilters/NavigationQueryFilter.h"
-#include "Runtime/Navmesh/Public/Detour/DetourNavMeshQuery.h"
-#include "Runtime/Navmesh/Public/Detour/DetourNavMesh.h"
-#include "Runtime/Navmesh/Public/Detour/DetourCommon.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
-#include "Public/Navigation/CubeComponent.h"
+#include "NavFilters/NavigationQueryFilter.h"
+#include "Detour/DetourNavMeshQuery.h"
+#include "Detour/DetourNavMesh.h"
+#include "Detour/DetourCommon.h"
+#include "Navigation/MyRecastNavMesh.h"
+#include "Navigation/CubeComponent.h"
 
 //----------------------------------------------------------------------//
 // dtQueryFilter_Example();
@@ -33,12 +34,13 @@ bool dtQueryFilter_Example::SetPlayerVisibility(const TArray<Triangle> VisibleAr
 ///  @param[in]		nextTile	The tile containing the next polygon. [opt]
 ///  @param[in]		nextPoly	The next polygon. [opt]
 
-float dtQueryFilter_Example::getVirtualCost(const float * pa, const float * pb, const dtPolyRef prevRef, const dtMeshTile * prevTile, const dtPoly * prevPoly, const dtPolyRef curRef, const dtMeshTile * curTile, const dtPoly * curPoly, const dtPolyRef nextRef, const dtMeshTile * nextTile, const dtPoly * nextPoly) const
-{
-	const float cost = GetCustomCost(FVector2D(-pa[0], -pa[2]), FVector2D(-pb[0], -pb[2]));
-	//UE_LOG(LogTemp, Warning, TEXT("Cost from P(%f,%f) to P(%f,%f) - Cost: %f"), -pa[0], -pa[2], -pb[0], -pb[2], cost);
-	return cost; 
-}
+//i dont know
+// float dtQueryFilter_Example::getVirtualCost(const float * pa, const float * pb, const dtPolyRef prevRef, const dtMeshTile * prevTile, const dtPoly * prevPoly, const dtPolyRef curRef, const dtMeshTile * curTile, const dtPoly * curPoly, const dtPolyRef nextRef, const dtMeshTile * nextTile, const dtPoly * nextPoly) const
+// {
+// 	const float cost = GetCustomCost(FVector2D(-pa[0], -pa[2]), FVector2D(-pb[0], -pb[2]));
+// 	//UE_LOG(LogTemp, Warning, TEXT("Cost from P(%f,%f) to P(%f,%f) - Cost: %f"), -pa[0], -pa[2], -pb[0], -pb[2], cost);
+// 	return cost; 
+// }
 
 float dtQueryFilter_Example::GetCustomCost(const FVector2D StartPosition, const FVector2D EndPosition) const {
 	float DefaultCost = 1; 	// Default pathfinding cost
@@ -190,8 +192,8 @@ void FRecastQueryFilter_Example::SetAllAreaCosts(const float* CostArray, const i
 
 void FRecastQueryFilter_Example::GetAllAreaCosts(float* CostArray, float* FixedCostArray, const int32 Count) const
 {
-	const float* DetourCosts = getAllAreaCosts();
-	const float* DetourFixedCosts = getAllFixedAreaCosts();
+	const dtReal* DetourCosts = getAllAreaCosts();
+	const dtReal* DetourFixedCosts = getAllFixedAreaCosts();
 
 	FMemory::Memcpy(CostArray, DetourCosts, sizeof(float) * FMath::Min(Count, RECAST_MAX_AREAS));
 	FMemory::Memcpy(FixedCostArray, DetourFixedCosts, sizeof(float) * FMath::Min(Count, RECAST_MAX_AREAS));
@@ -271,8 +273,7 @@ void AMyRecastNavMesh::SetupCustomNavFilter() {
 	}
 }
 
-FRecastQueryFilter_Example* AMyRecastNavMesh::GetCustomFilter() const  {
-	FRecastQueryFilter_Example* MyFRecastQueryFilter = reinterpret_cast<FRecastQueryFilter_Example*>(DefaultQueryFilter.Get()->GetImplementation());
+FRecastQueryFilter_Example* AMyRecastNavMesh::GetCustomFilter() const {
+	FRecastQueryFilter_Example* MyFRecastQueryFilter = static_cast<FRecastQueryFilter_Example*>(DefaultQueryFilter.Get()->GetImplementation());
 	return MyFRecastQueryFilter;
 }
-

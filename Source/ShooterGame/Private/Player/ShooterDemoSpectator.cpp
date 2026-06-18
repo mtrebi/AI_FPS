@@ -1,7 +1,7 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Player/ShooterDemoSpectator.h"
+#include "ShooterGame.h"
 #include "UI/Menu/ShooterDemoPlaybackMenu.h"
 #include "UI/Widgets/SShooterDemoHUD.h"
 #include "Engine/DemoNetDriver.h"
@@ -33,7 +33,7 @@ void AShooterDemoSpectator::SetPlayer( UPlayer* InPlayer )
 	ShooterDemoPlaybackMenu->Construct( Cast< ULocalPlayer >( Player ) );
 
 	// Create HUD if this is playback
-	if (GetWorld() != nullptr && GetWorld()->DemoNetDriver != nullptr && !GetWorld()->DemoNetDriver->IsServer())
+	if (GetWorld() != nullptr && GetWorld()->GetDemoNetDriver() != nullptr && !GetWorld()->GetDemoNetDriver()->IsServer())
 	{
 		if (GEngine != nullptr && GEngine->GameViewport != nullptr)
 		{
@@ -47,7 +47,7 @@ void AShooterDemoSpectator::SetPlayer( UPlayer* InPlayer )
 	FActorSpawnParameters SpawnInfo;
 
 	SpawnInfo.Owner				= this;
-	SpawnInfo.Instigator		= Instigator;
+	SpawnInfo.Instigator		= GetInstigator();
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 	PlaybackSpeed = 2;

@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/AttackPositionTest.h"
 #include "ShooterGame.h"
-#include "Public/Bots/ShooterBot.h"
+#include "Bots/ShooterBot.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/Bots/ShooterAIController.h"
-#include "Public/EQS/CoverBaseClass.h"
-#include "Public/EQS/AttackPositionTest.h"
+#include "Bots/ShooterAIController.h"
+#include "EQS/CoverBaseClass.h"
+#include "EQS/AttackPositionTest.h"
 
 
 UAttackPositionTest::UAttackPositionTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -41,7 +42,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	}
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	const TArray<FVector> LocationOfCoverAnnotations = GetLocationOfCoverAnnotationsWithinRadius(World, ContextLocations[0]);
 
 
@@ -51,7 +52,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	{
 		float CurrentDistance;
 		float MinDistance = 100000;
-		const FVector Location = GetItemLocation(QueryInstance, *It);
+		const FVector Location = GetItemLocation(QueryInstance, It);
 		for (auto It2 = LocationOfCoverAnnotations.CreateConstIterator(); It2; ++It2) {
 			const FVector CoverLocation = *It2;
 			CurrentDistance = FVector::Dist(Location, CoverLocation);
@@ -59,7 +60,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 		}
 		// Discard items that are far away of a cover annotation
 		if (MinDistance > DiscardDistanceMax) {
-			//It.DiscardItem();
+			It.ForceItemState(EEnvItemStatus::Failed);
 		}
 		else if (World) {
 			FHitResult OutHit;
@@ -77,7 +78,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 				//BehindCoverLocations.Add(Location);
 			}
 			else {
-				It.DiscardItem();
+				It.ForceItemState(EEnvItemStatus::Failed);
 			}
 		}
 	}
@@ -85,7 +86,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	// Check visibility of points to behind cover locations
 	for (FEnvQueryInstance::ItemIterator It3(this, QueryInstance); It3; ++It3)
 	{
-		const FVector Location = GetItemLocation(QueryInstance, *It3);
+		const FVector Location = GetItemLocation(QueryInstance, It3);
 
 		FHitResult OutHit;
 		FCollisionQueryParams CollisionParams;
@@ -96,7 +97,7 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 
 		// Check visibility to player
 		const bool BlockingHitFound = World->LineTraceSingleByChannel(OutHit, Location, ContextLocations[0], ECollisionChannel::ECC_Visibility, CollisionParams);
-		if (BlockingHitFound && OutHit.Actor->GetClass() == AShooterCharacter::StaticClass()) {
+		if (BlockingHitFound && OutHit.GetActor()->GetClass() == AShooterCharacter::StaticClass()) {
 			// There is visibility. Lets check distance to nearest cover!
 			float CurrentDistance;
 			float MinDistance = 100000;
@@ -112,12 +113,12 @@ void UAttackPositionTest::RunTest(FEnvQueryInstance& QueryInstance) const
 			}
 			else {
 				// Discard items that are far away of a cover annotation
-				It3.DiscardItem();
+				It3.ForceItemState(EEnvItemStatus::Failed);
 			}
 		}
 		else {
 			// No visibility
-			It3.DiscardItem();
+			It3.ForceItemState(EEnvItemStatus::Failed);
 		}
 	}
 }

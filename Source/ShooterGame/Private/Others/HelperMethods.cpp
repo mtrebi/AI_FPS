@@ -1,11 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Others/HelperMethods.h"
+
 #include "ShooterGame.h"
 #include "Bots/ShooterBot.h"
 #include "Bots/ShooterAIController.h"
-#include "Public/EQS/CoverBaseClass.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
-#include "Public/Others/HelperMethods.h"
+#include "EQS/CoverBaseClass.h"
+#include "Player/ShooterCharacter.h"
+#include "Navigation/MyRecastNavMesh.h"
 
 FVector HelperMethods::GetPlayerPositionFromAI(UWorld * World) {
 	FVector PlayerPosition;
@@ -326,9 +328,9 @@ FRecastQueryFilter_Example* HelperMethods::GetCustomFilter() {
 	FRecastQueryFilter_Example* MyFRecastQueryFilter = NULL;
 	UWorld * World = GetWorld();
 	if (World) {
-		UNavigationSystem* NavSys = World->GetNavigationSystem();
+		UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 		if (NavSys) {
-			ANavigationData* NavData = NavSys->GetMainNavData(FNavigationSystem::Create);
+			ANavigationData* NavData = NavSys->GetDefaultNavDataInstance(FNavigationSystem::Create);
 			AMyRecastNavMesh* MyNavMesh = Cast<AMyRecastNavMesh>(NavData);
 			MyFRecastQueryFilter = MyNavMesh->GetCustomFilter();
 		}

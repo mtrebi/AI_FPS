@@ -1,10 +1,11 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "ShooterDemoPlaybackMenu.h"
+#include "ShooterGame.h"
 #include "ShooterStyle.h"
 #include "ShooterMenuSoundsWidgetStyle.h"
 #include "ShooterGameInstance.h"
+#include "Player/ShooterPlayerController.h"
 
 #define LOCTEXT_NAMESPACE "ShooterGame.HUD.Menu"
 
@@ -21,7 +22,7 @@ void FShooterDemoPlaybackMenu::Construct( ULocalPlayer* _PlayerOwner )
 	if ( !GameMenuWidget.IsValid() )
 	{
 		SAssignNew( GameMenuWidget, SShooterMenuWidget )
-			.PlayerOwner( TWeakObjectPtr<ULocalPlayer>( PlayerOwner ) )
+			.PlayerOwner( MakeWeakObjectPtr( PlayerOwner ) )
 			.Cursor( EMouseCursor::Default )
 			.IsGameMenu( true );			
 

@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
-#include "Runtime/Engine/Classes/AI/Navigation/NavFilters/NavigationQueryFilter.h"
+#include "NavFilters/NavigationQueryFilter.h"
 #include "Runtime/Navmesh/Public/Detour/DetourNavMeshQuery.h"
 #include "Runtime/Navmesh/Public/Detour/DetourNavMesh.h"
-#include "AI/Navigation/PImplRecastNavMesh.h"
-#include "AI/Navigation/RecastNavMesh.h"
+#include "NavMesh/PImplRecastNavMesh.h"
+#include "NavMesh/RecastNavMesh.h"
 
 #include "MyRecastNavMesh.generated.h"
 
@@ -101,10 +101,10 @@ public:
 	virtual ~dtQueryFilter_Example() {}
 protected:
 	
-	virtual float getVirtualCost(const float* pa, const float* pb,
-		const dtPolyRef prevRef, const dtMeshTile* prevTile, const dtPoly* prevPoly,
-		const dtPolyRef curRef, const dtMeshTile* curTile, const dtPoly* curPoly,
-		const dtPolyRef nextRef, const dtMeshTile* nextTile, const dtPoly* nextPoly) const override;
+	// virtual float getVirtualCost(const float* pa, const float* pb,
+	// 	const dtPolyRef prevRef, const dtMeshTile* prevTile, const dtPoly* prevPoly,
+	// 	const dtPolyRef curRef, const dtMeshTile* curTile, const dtPoly* curPoly,
+	// 	const dtPolyRef nextRef, const dtMeshTile* nextTile, const dtPoly* nextPoly) const override;
 	
 private:
 	float GetCostOfPosition(const FVector2D Position) const;
@@ -144,6 +144,19 @@ public:
 
 	/** note that it results in losing all area cost setup. Call it before setting anything else */
 	void SetIsVirtual(bool bIsVirtual);
+	
+public:
+	// satisfy INavigationQueryFilterInterface
+	virtual float GetHeuristicScale() const override
+	{
+		return 1.0f; // adjust scale if you need different heuristic weighting
+	}
+
+	// // provide a concrete CreateCopy implementation so copies can be made
+	// virtual INavigationQueryFilterInterface* CreateCopy() const override
+	// {
+	// 	return new FRecastQueryFilter_Example(*this);
+	// }
 };
 
 /**

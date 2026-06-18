@@ -5,11 +5,11 @@
 #include "Perception/AISense.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISenseConfig_Hearing.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/Others/AttackPositions.h"
-#include "Public/Others/SearchLocations.h"
-#include "Public/Navigation/MyInfluenceMap.h"
+#include "Navigation/MyRecastNavMesh.h"
+#include "Others/HelperMethods.h"
+#include "Others/AttackPositions.h"
+#include "Others/SearchLocations.h"
+#include "Navigation/MyInfluenceMap.h"
 #include "ShooterAIController.generated.h"
 
 class UBehaviorTreeComponent;
@@ -59,13 +59,17 @@ private:
 public:
 	// Begin AController interface
 	virtual void GameHasEnded(class AActor* EndGameFocus = NULL, bool bIsWinner = false) override;
-	virtual void Possess(class APawn* InPawn) override;
+	virtual void OnPossess(class APawn* InPawn) override;
 	virtual void BeginInactiveState() override;
 	// End APlayerController interface
 
 	void Respawn();
 
 	void CheckAmmo(const class AShooterWeapon* CurrentWeapon);
+
+	void SetEnemy(class APawn* InPawn);
+
+	class AShooterCharacter* GetEnemy() const;
 
 	bool HasWeaponLOSToEnemy(AActor* InEnemyActor, const bool bAnyEnemy) const;
 
@@ -209,7 +213,7 @@ public:
 
 	/************************* RUNTIME UPDATES **************************/
 	UFUNCTION(BlueprintCallable, Category = "Update")
-	void OnPerceptionUpdated(TArray<AActor*> testActors);
+	void OnPerceptionUpdated(const TArray<AActor*>& testActors);
 	
 	UFUNCTION(BlueprintCallable, Category = "Update")
 	void UpdateData(const float DeltaSeconds);

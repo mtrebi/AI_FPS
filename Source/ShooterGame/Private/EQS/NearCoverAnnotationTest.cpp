@@ -1,12 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/NearCoverAnnotationTest.h"
+
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/EQS/CoverBaseClass.h"
-#include "Public/Bots/ShooterBot.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/NearCoverAnnotationTest.h"
+#include "EQS/CoverBaseClass.h"
+#include "Bots/ShooterBot.h"
+#include "Others/HelperMethods.h"
+#include "NavigationSystem.h"
 
 UNearCoverAnnotationTest::UNearCoverAnnotationTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -28,15 +30,15 @@ void UNearCoverAnnotationTest::RunTest(FEnvQueryInstance& QueryInstance) const
 	bool bWantsHit = BoolValue.GetValue();
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
-	UNavigationSystem* NavSys = World->GetNavigationSystem();
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 	
 
 	if (!NavSys) {
 		return;
 	}
 
-	ANavigationData* NavData = NavSys->GetMainNavData(FNavigationSystem::Create);
+	ANavigationData* NavData = NavSys->GetDefaultNavDataInstance(FNavigationSystem::Create);
 	AMyRecastNavMesh* MyNavMesh = Cast<AMyRecastNavMesh>(NavData);
 	FRecastQueryFilter_Example* MyFRecastQueryFilter = MyNavMesh->GetCustomFilter();
 

@@ -1,10 +1,11 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "SShooterScoreboardWidget.h"
+#include "ShooterGame.h"
 #include "ShooterStyle.h"
 #include "ShooterScoreboardWidgetStyle.h"
 #include "ShooterUIHelpers.h"
+#include "Online/ShooterGameState.h"
 #include "Online/ShooterPlayerState.h"
 
 #define LOCTEXT_NAMESPACE "ShooterScoreboard"
@@ -12,6 +13,8 @@
 // @todo: prevent interaction on PC for now (see OnFocusReceived for reasons)
 #if PLATFORM_XBOXONE
 #define INTERACTIVE_SCOREBOARD	1
+#else
+#define INTERACTIVE_SCOREBOARD	0
 #endif
 
 #define	NORM_PADDING	(FMargin(5))
@@ -119,13 +122,13 @@ void SShooterScoreboardWidget::Construct(const FArguments& InArgs)
 	);
 }
 
-void SShooterScoreboardWidget::StoreTalkingPlayerData(FString TalkingPlayerName, bool bIsTalking)
+void SShooterScoreboardWidget::StoreTalkingPlayerData(const FUniqueNetId& PlayerId, bool bIsTalking)
 {
 	bool bIsFound = false;
 	int32 FoundIndex = -1;
 	for (int32 i = 0; i < PlayersTalkingThisFrame.Num(); ++i)
 	{
-		if (PlayersTalkingThisFrame[i].Key == TalkingPlayerName)
+		if (PlayersTalkingThisFrame[i].Key.Get() == PlayerId)
 		{
 			FoundIndex = i;
 			bIsFound = true;
@@ -141,7 +144,7 @@ void SShooterScoreboardWidget::StoreTalkingPlayerData(FString TalkingPlayerName,
 	}
 	else
 	{
-		PlayersTalkingThisFrame.Add(TPairInitializer<FString, bool>(TalkingPlayerName, bIsTalking));
+		PlayersTalkingThisFrame.Emplace(PlayerId.AsShared(), bIsTalking);
 	}
 }
 
@@ -149,7 +152,7 @@ FText SShooterScoreboardWidget::GetMatchRestartText() const
 {
 	if (PCOwner.IsValid() && (PCOwner->GetWorld() != NULL ))
 	{
-		AShooterGameState* const GameState = Cast<AShooterGameState>(PCOwner->GetWorld()->GameState);
+		AShooterGameState* const GameState = PCOwner->GetWorld()->GetGameState<AShooterGameState>();
 		if (GameState)
 		{
 			if (GameState->RemainingTime > 0)
@@ -263,7 +266,7 @@ void SShooterScoreboardWidget::UpdatePlayerStateMaps()
 {
 	if (PCOwner.IsValid())
 	{
-		AShooterGameState* const GameState = Cast<AShooterGameState>(PCOwner->GetWorld()->GameState);
+		AShooterGameState* const GameState = PCOwner->GetWorld()->GetGameState<AShooterGameState>();
 		if (GameState)
 		{
 			bool bRequiresWidgetUpdate = false;
@@ -338,7 +341,7 @@ FReply SShooterScoreboardWidget::OnKeyDown(const FGeometry& MyGeometry, const FK
 			OnSelectedPlayerNext();
 			Result = FReply::Handled();
 		}
-		else if (Key == EKeys::Enter || Key == EKeys::Gamepad_FaceButton_Bottom)
+		else if (Key == EKeys::Enter || Key == EKeys::Virtual_Accept)
 		{
 			ProfileUIOpened();
 			Result = FReply::Handled();
@@ -576,10 +579,9 @@ EVisibility SShooterScoreboardWidget::SpeakerIconVisibility(const FTeamPlayer Te
 	AShooterPlayerState* PlayerState = GetSortedPlayerState(TeamPlayer);
 	if (PlayerState)
 	{
-		FString PlayerName = PlayerState->GetShortPlayerName();
 		for (int32 i = 0; i < PlayersTalkingThisFrame.Num(); ++i)
 		{
-			if (PlayerName == PlayersTalkingThisFrame[i].Key && PlayersTalkingThisFrame[i].Value)
+			if (PlayerState->UniqueId == PlayersTalkingThisFrame[i].Key && PlayersTalkingThisFrame[i].Value)
 			{
 				return EVisibility::Visible;
 			}
@@ -608,6 +610,13 @@ FText SShooterScoreboardWidget::GetPlayerName(const FTeamPlayer TeamPlayer) cons
 	}
 
 	return FText::GetEmpty();
+}
+
+bool SShooterScoreboardWidget::ShouldPlayerBeDisplayed(const FTeamPlayer TeamPlayer) const
+{
+	const AShooterPlayerState* PlayerState = GetSortedPlayerState(TeamPlayer);
+	
+	return PlayerState != nullptr && !PlayerState->bOnlySpectator;
 }
 
 FSlateColor SShooterScoreboardWidget::GetPlayerColor(const FTeamPlayer TeamPlayer) const
@@ -740,22 +749,27 @@ TSharedRef<SWidget> SShooterScoreboardWidget::MakeTotalsRow(uint8 TeamNum) const
 	return TotalsRow.ToSharedRef();
 }
 
-TSharedRef<SWidget> SShooterScoreboardWidget::MakePlayerRows(uint8 TeamNum) const
+TSharedRef<SWidget> SShooterScoreboardWidget::MakePlayerRows(uint8 TeamNum)
 {
 	TSharedRef<SVerticalBox> PlayerRows = SNew(SVerticalBox);
 
 	for (int32 PlayerIndex=0; PlayerIndex < PlayerStateMaps[TeamNum].Num(); PlayerIndex++ )
 	{
-		PlayerRows->AddSlot() .AutoHeight()
-		[
-			MakePlayerRow(FTeamPlayer(TeamNum, PlayerIndex))
-		];
+		FTeamPlayer TeamPlayer(TeamNum, PlayerIndex);
+
+		if (ShouldPlayerBeDisplayed(TeamPlayer))
+		{
+			PlayerRows->AddSlot().AutoHeight()
+				[
+					MakePlayerRow(TeamPlayer)
+				];
+		}
 	}
 
 	return PlayerRows;
 }
 
-TSharedRef<SWidget> SShooterScoreboardWidget::MakePlayerRow(const FTeamPlayer& TeamPlayer) const
+TSharedRef<SWidget> SShooterScoreboardWidget::MakePlayerRow(const FTeamPlayer& TeamPlayer)
 {
 	// Make the padding here slightly smaller than NORM_PADDING, to fit in more players
 	const FMargin Pad = FMargin(5,1);
@@ -771,50 +785,50 @@ TSharedRef<SWidget> SShooterScoreboardWidget::MakePlayerRow(const FTeamPlayer& T
 	];
 
 	//first autosized row with player name
-	PlayerRow->AddSlot() .Padding(Pad)
-	[
-		SNew(SBorder)
-		.Padding(Pad)
-		.HAlign(HAlign_Right)
-		.VAlign(VAlign_Center)
-		.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
-		.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
-		.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
-		.BorderImage(&ScoreboardStyle->ItemBorderBrush)
-		[
-			SNew(STextBlock)
-			.Text(this, &SShooterScoreboardWidget::GetPlayerName, TeamPlayer)
-			.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
-			.ColorAndOpacity(this, &SShooterScoreboardWidget::GetPlayerColor, TeamPlayer)
-		]
-	];
+	 PlayerRow->AddSlot() .Padding(Pad)
+	 [
+	 	SNew(SBorder)
+	 	.Padding(Pad)
+	 	.HAlign(HAlign_Right)
+	 	.VAlign(VAlign_Center)
+	 	.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
+	 	.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
+	 	.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
+	 	.BorderImage(&ScoreboardStyle->ItemBorderBrush)
+	 	[
+	 		SNew(STextBlock)
+	 		.Text(this, &SShooterScoreboardWidget::GetPlayerName, TeamPlayer)
+	 		.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
+	 		.ColorAndOpacity(this, &SShooterScoreboardWidget::GetPlayerColor, TeamPlayer)
+	 	]
+	 ];
 	//attributes rows (kills, deaths, score/captures)
-	for (uint8 ColIdx = 0; ColIdx < Columns.Num(); ColIdx++)
-	{
-		PlayerRow->AddSlot()
-		.Padding(Pad) .AutoWidth() .HAlign(HAlign_Center) .VAlign(VAlign_Center)
-		[
-			SNew(SBorder)
-			.Padding(Pad)
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Center)
-			.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
-			.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
-			.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
-			.BorderImage(&ScoreboardStyle->ItemBorderBrush)
-			[
-				SNew(SBox)
-				.WidthOverride(ScoreBoxWidth)
-				.HAlign(HAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text(this, &SShooterScoreboardWidget::GetStat, Columns[ColIdx].AttributeGetter, TeamPlayer)
-					.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
-					.ColorAndOpacity(this, &SShooterScoreboardWidget::GetColumnColor, TeamPlayer, ColIdx)
-				]
-			]
-		];
-	}
+	 for (uint8 ColIdx = 0; ColIdx < Columns.Num(); ColIdx++)
+	 {
+	 	PlayerRow->AddSlot()
+	 	.Padding(Pad) .AutoWidth() .HAlign(HAlign_Center) .VAlign(VAlign_Center)
+	 	[
+	 		SNew(SBorder)
+	 		.Padding(Pad)
+	 		.VAlign(VAlign_Center)
+	 		.HAlign(HAlign_Center)
+	 		.Visibility(this, &SShooterScoreboardWidget::PlayerPresenceToItemVisibility, TeamPlayer)
+	 		.OnMouseMove(this, &SShooterScoreboardWidget::OnMouseOverPlayer, TeamPlayer)
+	 		.BorderBackgroundColor(this, &SShooterScoreboardWidget::GetScoreboardBorderColor, TeamPlayer)
+	 		.BorderImage(&ScoreboardStyle->ItemBorderBrush)
+	 		[
+	 			SNew(SBox)
+	 			.WidthOverride(ScoreBoxWidth)
+	 			.HAlign(HAlign_Center)
+	 			[
+	 				SNew(STextBlock)
+	 				.Text(this, &SShooterScoreboardWidget::GetStat, Columns[ColIdx].AttributeGetter, TeamPlayer)
+	 				.TextStyle(FShooterStyle::Get(), "ShooterGame.DefaultScoreboard.Row.StatTextStyle")
+	 				.ColorAndOpacity(this, &SShooterScoreboardWidget::GetColumnColor, TeamPlayer, ColIdx)
+	 			]
+	 		]
+	 	];
+	 }
 	return PlayerRow.ToSharedRef();
 }
 

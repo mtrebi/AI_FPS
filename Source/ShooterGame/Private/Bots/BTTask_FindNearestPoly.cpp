@@ -1,13 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "ShooterGame.h"
 #include "Bots/BTTask_FindNearestPoly.h"
+#include "ShooterGame.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/Blackboard/BlackboardKeyAllTypes.h"
 #include "Bots/ShooterAIController.h"
 #include "Bots/ShooterBot.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
+#include "NavigationSystem.h"
+#include "Online/ShooterGameMode.h"
+#include "Navigation/MyRecastNavMesh.h"
 
 UBTTask_FindNearestPoly::UBTTask_FindNearestPoly(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -29,22 +31,23 @@ EBTNodeResult::Type UBTTask_FindNearestPoly::ExecuteTask(UBehaviorTreeComponent&
 		return EBTNodeResult::Failed;
 	}
 
-	const FNavAgentProperties* AgentProperties = MyBot->GetNavAgentProperties();
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys) {
+		return EBTNodeResult::Failed;
+	}
+
+	//const FNavAgentProperties& AgentProperties = MyBot->GetNavAgentPropertiesRef();
+	const ANavigationData* AgentProperties = NavSys->GetNavDataForProps(MyBot->GetNavAgentPropertiesRef());
 
 	if (!AgentProperties)
 	{
 		return EBTNodeResult::Failed;
 	}
 
-	UNavigationSystem* NavSys = GetWorld()->GetNavigationSystem();
-	if (!NavSys) {
-		return EBTNodeResult::Failed;
-	}
+	//FNavigationSystem::ECreateIfMissing CreateNewIfNoneFound;
+	const ANavigationData* NavData = NavSys->GetDefaultNavDataInstance(/*FNavigationSystem::DontCreate*/);
 
-	//FNavigationSystem::ECreateIfEmpty CreateNewIfNoneFound;
-	const ANavigationData* NavData = NavSys->GetMainNavData(FNavigationSystem::DontCreate);
-
-	//const ANavigationData* NavData = (AgentProperties != NULL) ? GetNavDataForProps(*AgentProperties) : GetMainNavData(FNavigationSystem::DontCreate);
+	//const ANavigationData* NavData = (AgentProperties != NULL) ? GetNavDataForProps(*AgentProperties) : GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
 	const ARecastNavMesh* NavMesh = Cast<ARecastNavMesh>(NavData);
 	const AMyRecastNavMesh* MyNavMesh = Cast<AMyRecastNavMesh>(NavMesh);
 
@@ -78,15 +81,15 @@ EBTNodeResult::Type UBTTask_FindNearestPoly::ExecuteTask(UBehaviorTreeComponent&
 		return EBTNodeResult::Failed;
 	}
 
-	UNavigationSystem* NavSys = GetWorld()->GetNavigationSystem();
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 	if (!NavSys) {
 		return EBTNodeResult::Failed;
 	}
 	
-	FNavigationSystem::ECreateIfEmpty CreateNewIfNoneFound;
-	const ANavigationData* NavData = NavSys->GetMainNavData(CreateNewIfNoneFound);
+	FNavigationSystem::ECreateIfMissing CreateNewIfNoneFound;
+	const ANavigationData* NavData = NavSys->GetDefaultNavDataInstance(CreateNewIfNoneFound);
 	
-	//const ANavigationData* NavData = (AgentProperties != NULL) ? GetNavDataForProps(*AgentProperties) : GetMainNavData(FNavigationSystem::DontCreate);
+	//const ANavigationData* NavData = (AgentProperties != NULL) ? GetNavDataForProps(*AgentProperties) : GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
 	const ARecastNavMesh* NavMesh = Cast<ARecastNavMesh>(NavData);
 
 	if (!NavMesh)
@@ -133,15 +136,15 @@ EBTNodeResult::Type UBTTask_FindNearestPoly::ExecuteTask(UBehaviorTreeComponent&
 	return EBTNodeResult::Failed;
 	}
 
-	UNavigationSystem* NavSys = GetWorld()->GetNavigationSystem();
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 	if (!NavSys) {
 	return EBTNodeResult::Failed;
 	}
 
-	FNavigationSystem::ECreateIfEmpty CreateNewIfNoneFound;
-	const ANavigationData* NavData = NavSys->GetMainNavData(CreateNewIfNoneFound);
+	FNavigationSystem::ECreateIfMissing CreateNewIfNoneFound;
+	const ANavigationData* NavData = NavSys->GetDefaultNavDataInstance(CreateNewIfNoneFound);
 
-	//const ANavigationData* NavData = (AgentProperties != NULL) ? GetNavDataForProps(*AgentProperties) : GetMainNavData(FNavigationSystem::DontCreate);
+	//const ANavigationData* NavData = (AgentProperties != NULL) ? GetNavDataForProps(*AgentProperties) : GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
 	const ARecastNavMesh* NavMesh = Cast<ARecastNavMesh>(NavData);
 
 	if (!NavMesh)

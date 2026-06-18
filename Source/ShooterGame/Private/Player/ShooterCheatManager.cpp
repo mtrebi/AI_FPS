@@ -1,9 +1,12 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "ShooterGame.h"
 #include "Player/ShooterCheatManager.h"
+#include "ShooterGame.h"
 #include "Online/ShooterPlayerState.h"
 #include "Bots/ShooterAIController.h"
+#include "Online/ShooterGameMode.h"
+#include "Online/ShooterGameState.h"
+#include "Player/ShooterPlayerController.h"
 
 UShooterCheatManager::UShooterCheatManager(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -29,8 +32,8 @@ void UShooterCheatManager::ToggleMatchTimer()
 {
 	AShooterPlayerController* MyPC = GetOuterAShooterPlayerController();
 
-	AShooterGameState* const MyGameState = Cast<AShooterGameState>(MyPC->GetWorld()->GameState);
-	if (MyGameState && MyGameState->Role == ROLE_Authority)
+	AShooterGameState* const MyGameState = MyPC->GetWorld()->GetGameState<AShooterGameState>();
+	if (MyGameState && MyGameState->GetLocalRole() == ROLE_Authority)
 	{
 		MyGameState->bTimerPaused = !MyGameState->bTimerPaused;
 		MyPC->ClientMessage(FString::Printf(TEXT("Match timer: %s"), MyGameState->bTimerPaused ? TEXT("PAUSED") : TEXT("running")));
@@ -53,7 +56,7 @@ void UShooterCheatManager::ChangeTeam(int32 NewTeamNumber)
 	AShooterPlayerController* MyPC = GetOuterAShooterPlayerController();
 
 	AShooterPlayerState* MyPlayerState = Cast<AShooterPlayerState>(MyPC->PlayerState);
-	if (MyPlayerState && MyPlayerState->Role == ROLE_Authority)
+	if (MyPlayerState && MyPlayerState->GetLocalRole() == ROLE_Authority)
 	{
 		MyPlayerState->SetTeamNum(NewTeamNumber);
 		MyPC->ClientMessage(FString::Printf(TEXT("Team changed to: %d"), MyPlayerState->GetTeamNum()));

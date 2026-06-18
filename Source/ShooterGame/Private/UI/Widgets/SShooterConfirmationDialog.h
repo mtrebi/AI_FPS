@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 #pragma once
 
 #include "SlateBasics.h"
@@ -43,4 +43,8 @@ public:
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& KeyEvent) override;
 
 private:
+
+	FReply OnConfirmHandler();
+	FReply ExecuteConfirm(const int32 UserIndex);
+
 };

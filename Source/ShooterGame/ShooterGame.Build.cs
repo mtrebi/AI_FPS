@@ -1,14 +1,15 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 
 public class ShooterGame : ModuleRules
 {
-	public ShooterGame(TargetInfo Target)
+	public ShooterGame(ReadOnlyTargetRules Target) : base(Target)
 	{
+		PrivatePCHHeaderFile = "Public/ShooterGame.h";
+
 		PrivateIncludePaths.AddRange(
 			new string[] { 
-				"ShooterGame/Classes/Player",
 				"ShooterGame/Private",
 				"ShooterGame/Private/UI",
 				"ShooterGame/Private/UI/Menu",
@@ -25,10 +26,13 @@ public class ShooterGame : ModuleRules
 				"OnlineSubsystem",
 				"OnlineSubsystemUtils",
 				"AssetRegistry",
-                "AIModule",
+				"NavigationSystem",
+				"AIModule",
 				"GameplayTasks",
-                "NavMesh",
-			}
+				"GameplayCameras",
+				"Navmesh",
+                
+            }
 		);
 
         PrivateDependencyModuleNames.AddRange(
@@ -37,6 +41,13 @@ public class ShooterGame : ModuleRules
 				"Slate",
 				"SlateCore",
 				"ShooterGameLoadingScreen",
+				"Json",
+				"ApplicationCore",
+				"ReplicationGraph",
+				"PakFile",
+				"PhysicsCore",
+				"NetCore",
+				"AssetRegistry",
 			}
 		);
 
@@ -45,7 +56,8 @@ public class ShooterGame : ModuleRules
 				"OnlineSubsystemNull",
 				"NetworkReplayStreaming",
 				"NullNetworkReplayStreaming",
-				"HttpNetworkReplayStreaming"
+				"HttpNetworkReplayStreaming",
+				"LocalFileNetworkReplayStreaming"
 			}
 		);
 
@@ -55,20 +67,17 @@ public class ShooterGame : ModuleRules
 			}
 		);
 
-		if ((Target.Platform == UnrealTargetPlatform.Win32) || (Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Linux) || (Target.Platform == UnrealTargetPlatform.Mac))
-		{
-			if (UEBuildConfiguration.bCompileSteamOSS == true)
-			{
-				DynamicallyLoadedModuleNames.Add("OnlineSubsystemSteam");
-			}
-		}
-		else if (Target.Platform == UnrealTargetPlatform.PS4)
-		{
-			DynamicallyLoadedModuleNames.Add("OnlineSubsystemPS4");
-		}
-        else if (Target.Platform == UnrealTargetPlatform.XboxOne)
+		if (Target.bBuildDeveloperTools || (Target.Configuration != UnrealTargetConfiguration.Shipping && Target.Configuration != UnrealTargetConfiguration.Test))
         {
-            DynamicallyLoadedModuleNames.Add("OnlineSubsystemLive");
+            PrivateDependencyModuleNames.Add("GameplayDebugger");
+            PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=1");
+            PublicDefinitions.Add("PLATFORM_PS4=!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR");
+            PublicDefinitions.Add("PLATFORM_XBOXONE=!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR");
+            PublicDefinitions.Add("SHOOTER_CONSOLE_UI=!(UE_BUILD_SHIPPING || UE_BUILD_TEST) || WITH_EDITOR");
         }
+		else
+		{
+			PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=0");
+		}
 	}
 }

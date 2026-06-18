@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Public/Navigation/MyRecastNavMesh.h"
+#include "Navigation/MyRecastNavMesh.h"
 
 /**
  * 

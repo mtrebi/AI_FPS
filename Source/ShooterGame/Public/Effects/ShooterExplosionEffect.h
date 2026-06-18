@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -40,11 +40,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category=Surface)
 	FHitResult SurfaceHit;
 
-	/** spawn explosion */
-	virtual void BeginPlay() override;
-
 	/** update fading light */
 	virtual void Tick(float DeltaSeconds) override;
+
+protected:
+	/** spawn explosion */
+	virtual void BeginPlay() override;
 
 private:
 

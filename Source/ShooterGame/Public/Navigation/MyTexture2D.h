@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
-#include "AI/Navigation/RecastNavMesh.h"
+#include "NavFilters/NavigationQueryFilter.h"
 #include "Runtime/Engine/Classes/Engine/Texture2D.h"
 /**
  * 

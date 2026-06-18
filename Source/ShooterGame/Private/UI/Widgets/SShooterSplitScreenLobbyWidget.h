@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -33,8 +33,6 @@ public:
 
 	void SetIsJoining( const bool _bIsJoining ) { bIsJoining =_bIsJoining; }
 
-	void SetIsOnline( const bool _bIsOnline ) { bIsOnline =_bIsOnline; }
-
 private:
 	bool IsUniqueIdOnline( const FUniqueNetId& ControllerId ) const;
 
@@ -49,11 +47,14 @@ private:
 
 	virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
 
-	void HandleLoginUIClosedAndReady(TSharedPtr<const FUniqueNetId> UniqueId, const int UserIndex);
+	void HandleLoginUIClosedAndReady(TSharedPtr<const FUniqueNetId> UniqueId, const int UserIndex, const FOnlineError& Error = FOnlineError());
 
 	UShooterGameInstance* GetGameInstance() const;
 
 	FText GetPlayFindText() const;
+#if PLATFORM_SWITCH
+	FText GetPlayAsGuestText() const;
+#endif
 
 	FReply OnOkOrCancel();
 	bool ConfirmSponsorsSatisfied() const;
@@ -67,7 +68,7 @@ private:
 	FOnClicked MasterUserBack;
 	FOnClicked MasterUserPlay;
 	
-	TSharedPtr<STextBlock> UserTextWidgets[MAX_POSSIBLE_SLOTS];
+	TSharedPtr<SRichTextBlock> UserTextWidgets[MAX_POSSIBLE_SLOTS];
 	TSharedPtr<SWidget> UserSlots[MAX_POSSIBLE_SLOTS];
 
 	/** used for holding on to the splitscreen lobby widget so we can switch back to that UI after the LoginFailure UI pops up */
@@ -76,12 +77,15 @@ private:
 	FText PressToPlayText;
 	FText PressToFindText;
 	FText PressToStartMatchText;
+#if PLATFORM_SWITCH
+	FText PlayAsGuestText;
+#endif
+
+	void OnLoginComplete(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
+	FDelegateHandle OnLoginCompleteDelegateHandle;
 
 	int PendingControllerId;
 
 	/** True if we joining a match */
 	bool bIsJoining;
-
-	/** True if we are online */
-	bool bIsOnline;
 };

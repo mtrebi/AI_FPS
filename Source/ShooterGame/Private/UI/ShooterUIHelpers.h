@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -21,11 +21,11 @@ public:
 	FText GetProfileOpenText() const;
 
 	/** profile open ui handler */
-	bool ProfileOpenedUI(const FUniqueNetId& Requestor, const FUniqueNetId& Requestee, const IOnlineExternalUI::FOnProfileUIClosedDelegate* Delegate) const;
+	bool ProfileOpenedUI(const FUniqueNetId& Requestor, const FUniqueNetId& Requestee, const FOnProfileUIClosedDelegate* Delegate) const;
 
 	/** fetches the string for swapping the profile */
 	FText GetProfileSwapText() const;
 
 	/** profile swap ui handler */
-	bool ProfileSwapUI(const int ControllerIndex, bool bShowOnlineOnly, const IOnlineExternalUI::FOnLoginUIClosedDelegate* Delegate) const;
+	bool ProfileSwapUI(const int ControllerIndex, bool bShowOnlineOnly, const FOnLoginUIClosedDelegate* Delegate) const;
 };

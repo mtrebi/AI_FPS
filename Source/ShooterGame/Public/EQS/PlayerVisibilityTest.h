@@ -3,8 +3,8 @@
 #pragma once
 
 #include "EnvironmentQuery/EnvQueryTest.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
-#include "Public/Others/HelperMethods.h"
+#include "Navigation/MyRecastNavMesh.h"
+#include "Others/HelperMethods.h"
 #include "PlayerVisibilityTest.generated.h"
 
 /**

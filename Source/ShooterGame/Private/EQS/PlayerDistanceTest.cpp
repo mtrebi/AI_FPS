@@ -1,10 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/PlayerDistanceTest.h"
+
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/PlayerDistanceTest.h"
+#include "Others/HelperMethods.h"
+#include "EQS/PlayerDistanceTest.h"
 
 UPlayerDistanceTest::UPlayerDistanceTest(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -32,11 +34,11 @@ void UPlayerDistanceTest::RunTest(FEnvQueryInstance& QueryInstance) const {
 	float MaxThresholdValue = FloatValueMax.GetValue();
 
 
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	const FVector PlayerPosition = HelperMethods::GetPlayerPositionFromAI(World);
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
 	{
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		const float Distance = FVector::Dist(PlayerPosition, ItemLocation);
 
 		It.SetScore(TestPurpose, FilterType, Distance, MinThresholdValue, MaxThresholdValue);

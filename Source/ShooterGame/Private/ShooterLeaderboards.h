@@ -1,8 +1,8 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 #pragma once
 
 #include "ShooterTypes.h"
-#include "OnlineLeaderboardInterface.h"
+#include "Interfaces/OnlineLeaderboardInterface.h"
 
 // these are normally exported from platform-specific tools
 #define LEADERBOARD_STAT_SCORE				"Score"

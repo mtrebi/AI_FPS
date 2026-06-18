@@ -1,23 +1,23 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "ShooterGame_Menu.generated.h"
 
 UCLASS()
-class AShooterGame_Menu : public AGameMode
+class AShooterGame_Menu : public AGameModeBase
 {
 	GENERATED_UCLASS_BODY()
 
 public:
 
-	// Begin AGameMode interface
+	// Begin AGameModeBase interface
 	/** skip it, menu doesn't require player start or pawn */
 	virtual void RestartPlayer(class AController* NewPlayer) override;
 
 	/** Returns game session class to use */
 	virtual TSubclassOf<AGameSession> GetGameSessionClass() const override;
-	// End AGameMode interface
+	// End AGameModeBase interface
 
 protected:
 

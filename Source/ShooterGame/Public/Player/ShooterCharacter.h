@@ -1,19 +1,20 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "ShooterTypes.h"
-#include "Perception/AISightTargetInterface.h"
-#include "Public/Navigation/MyRecastNavMesh.h"
 #include "ShooterCharacter.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnShooterCharacterEquipWeapon, AShooterCharacter*, AShooterWeapon* /* new */);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnShooterCharacterUnEquipWeapon, AShooterCharacter*, AShooterWeapon* /* old */);
 
 UCLASS(Abstract)
-class AShooterCharacter : public ACharacter, public IAISightTargetInterface
+class AShooterCharacter : public ACharacter
 {
 	GENERATED_UCLASS_BODY()
 
-	virtual bool CanBeSeenFrom(const FVector& ObserverLocation, FVector& OutSeenLocation, int32& NumberOfLoSChecksPerformed, float& OutSightStrength, const AActor* IgnoreActor = NULL) const override;
+	virtual void BeginDestroy() override;
+
 	/** spawn inventory, setup initial variables */
 	virtual void PostInitializeComponents() override;
 
@@ -32,54 +33,60 @@ class AShooterCharacter : public ACharacter, public IAISightTargetInterface
 	/** [client] perform PlayerState related setup */
 	virtual void OnRep_PlayerState() override;
 
-	/** 
-	 * Add camera pitch to first person mesh.
-	 *
-	 *	@param	CameraLocation	Location of the Camera.
-	 *	@param	CameraRotation	Rotation of the Camera.
-	 */
+	/** [server] called to determine if we should pause replication this actor to a specific player */
+	virtual bool IsReplicationPausedForConnection(const FNetViewer& ConnectionOwnerNetViewer) override;
+
+	/** [client] called when replication is paused for this actor */
+	virtual void OnReplicationPausedChanged(bool bIsReplicationPaused) override;
+
+	/**
+	* Add camera pitch to first person mesh.
+	*
+	*	@param	CameraLocation	Location of the Camera.
+	*	@param	CameraRotation	Rotation of the Camera.
+	*/
 	void OnCameraUpdate(const FVector& CameraLocation, const FRotator& CameraRotation);
 
 	/** get aim offsets */
-	UFUNCTION(BlueprintCallable, Category="Game|Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Game|Weapon")
 	FRotator GetAimOffsets() const;
 
-	/** 
-	 * Check if pawn is enemy if given controller.
-	 *
-	 * @param	TestPC	Controller to check against.
-	 */
+	/**
+	* Check if pawn is enemy if given controller.
+	*
+	* @param	TestPC	Controller to check against.
+	*/
 	bool IsEnemyFor(AController* TestPC) const;
 
 	//////////////////////////////////////////////////////////////////////////
 	// Inventory
 
-	/** 
-	 * [server] add weapon to inventory
-	 *
-	 * @param Weapon	Weapon to add.
-	 */
+	/**
+	* [server] add weapon to inventory
+	*
+	* @param Weapon	Weapon to add.
+	*/
 	void AddWeapon(class AShooterWeapon* Weapon);
 
-	/** 
-	 * [server] remove weapon from inventory 
-	 *
-	 * @param Weapon	Weapon to remove.
-	 */	
+	/**
+	* [server] remove weapon from inventory
+	*
+	* @param Weapon	Weapon to remove.
+	*/
 	void RemoveWeapon(class AShooterWeapon* Weapon);
 
-	/** 
-	 * Find in inventory
-	 *
-	 * @param WeaponClass	Class of weapon to find.
-	 */
+	/**
+	* Find in inventory
+	*
+	* @param WeaponClass	Class of weapon to find.
+	*/
 	class AShooterWeapon* FindWeapon(TSubclassOf<class AShooterWeapon> WeaponClass);
 
-	/** 
-	 * [server + local] equips weapon from inventory 
-	 *
-	 * @param Weapon	Weapon to equip
-	 */
+	/**
+	* [server + local] equips weapon from inventory
+	*
+	* @param Weapon	Weapon to equip
+	*/
 	void EquipWeapon(class AShooterWeapon* Weapon);
 
 	//////////////////////////////////////////////////////////////////////////
@@ -105,10 +112,10 @@ class AShooterCharacter : public ACharacter, public IAISightTargetInterface
 
 	/** [server + local] change running state */
 	void SetRunning(bool bNewRunning, bool bToggle);
-	
+
 	//////////////////////////////////////////////////////////////////////////
 	// Animations
-	
+
 	/** play anim montage */
 	virtual float PlayAnimMontage(class UAnimMontage* AnimMontage, float InPlayRate = 1.f, FName StartSectionName = NAME_None) override;
 
@@ -124,25 +131,25 @@ class AShooterCharacter : public ACharacter, public IAISightTargetInterface
 	/** setup pawn specific input handlers */
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
 
-	/** 
-	 * Move forward/back
-	 *
-	 * @param Val Movment input to apply
-	 */
+	/**
+	* Move forward/back
+	*
+	* @param Val Movment input to apply
+	*/
 	void MoveForward(float Val);
 
-	/** 
-	 * Strafe right/left 
-	 *
-	 * @param Val Movment input to apply
-	 */	
+	/**
+	* Strafe right/left
+	*
+	* @param Val Movment input to apply
+	*/
 	void MoveRight(float Val);
 
-	/** 
-	 * Move Up/Down in allowed movement modes. 
-	 *
-	 * @param Val Movment input to apply
-	 */	
+	/**
+	* Move Up/Down in allowed movement modes.
+	*
+	* @param Val Movment input to apply
+	*/
 	void MoveUp(float Val);
 
 	/* Frame rate independent turn */
@@ -194,8 +201,14 @@ class AShooterCharacter : public ACharacter, public IAISightTargetInterface
 	USkeletalMeshComponent* GetPawnMesh() const;
 
 	/** get currently equipped weapon */
-	UFUNCTION(BlueprintCallable, Category="Game|Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Game|Weapon")
 	class AShooterWeapon* GetWeapon() const;
+
+	/** Global notification when a character equips a weapon. Needed for replication graph. */
+	SHOOTERGAME_API static FOnShooterCharacterEquipWeapon NotifyEquipWeapon;
+
+	/** Global notification when a character un-equips a weapon. Needed for replication graph. */
+	SHOOTERGAME_API static FOnShooterCharacterUnEquipWeapon NotifyUnEquipWeapon;
 
 	/** get weapon attach point */
 	FName GetWeaponAttachPoint() const;
@@ -203,35 +216,35 @@ class AShooterCharacter : public ACharacter, public IAISightTargetInterface
 	/** get total number of inventory items */
 	int32 GetInventoryCount() const;
 
-	/** 
-	 * get weapon from inventory at index. Index validity is not checked.
-	 *
-	 * @param Index Inventory index
-	 */
+	/**
+	* get weapon from inventory at index. Index validity is not checked.
+	*
+	* @param Index Inventory index
+	*/
 	class AShooterWeapon* GetInventoryWeapon(int32 index) const;
 
 	/** get weapon taget modifier speed	*/
-	UFUNCTION(BlueprintCallable, Category="Game|Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Game|Weapon")
 	float GetTargetingSpeedModifier() const;
 
 	/** get targeting state */
-	UFUNCTION(BlueprintCallable, Category="Game|Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Game|Weapon")
 	bool IsTargeting() const;
 
 	/** get firing state */
-	UFUNCTION(BlueprintCallable, Category="Game|Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Game|Weapon")
 	bool IsFiring() const;
 
 	/** get the modifier value for running speed */
-	UFUNCTION(BlueprintCallable, Category=Pawn)
+	UFUNCTION(BlueprintCallable, Category = Pawn)
 	float GetRunningSpeedModifier() const;
 
 	/** get running state */
-	UFUNCTION(BlueprintCallable, Category=Pawn)
+	UFUNCTION(BlueprintCallable, Category = Pawn)
 	bool IsRunning() const;
 
 	/** get camera view type */
-	UFUNCTION(BlueprintCallable, Category=Mesh)
+	UFUNCTION(BlueprintCallable, Category = Mesh)
 	virtual bool IsFirstPerson() const;
 
 	/** get max health */
@@ -244,27 +257,27 @@ class AShooterCharacter : public ACharacter, public IAISightTargetInterface
 	float GetLowHealthPercentage() const;
 
 	/*
- 	 * Get either first or third person mesh. 
-	 *
- 	 * @param	WantFirstPerson		If true returns the first peron mesh, else returns the third
-	 */
-	USkeletalMeshComponent* GetSpecifcPawnMesh( bool WantFirstPerson ) const;
+	* Get either first or third person mesh.
+	*
+	* @param	WantFirstPerson		If true returns the first peron mesh, else returns the third
+	*/
+	USkeletalMeshComponent* GetSpecifcPawnMesh(bool WantFirstPerson) const;
 
 	/** Update the team color of all player meshes. */
 	void UpdateTeamColorsAllMIDs();
 private:
 
 	/** pawn mesh: 1st person view */
-	UPROPERTY(VisibleDefaultsOnly, Category=Mesh)
+	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* Mesh1P;
 protected:
 
 	/** socket or bone name for attaching weapon mesh */
-	UPROPERTY(EditDefaultsOnly, Category=Inventory)
+	UPROPERTY(EditDefaultsOnly, Category = Inventory)
 	FName WeaponAttachPoint;
 
 	/** default inventory list */
-	UPROPERTY(EditDefaultsOnly, Category=Inventory)
+	UPROPERTY(EditDefaultsOnly, Category = Inventory)
 	TArray<TSubclassOf<class AShooterWeapon> > DefaultInventoryClasses;
 
 	/** weapons in inventory */
@@ -272,18 +285,18 @@ protected:
 	TArray<class AShooterWeapon*> Inventory;
 
 	/** currently equipped weapon */
-	UPROPERTY(Transient, ReplicatedUsing=OnRep_CurrentWeapon)
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentWeapon)
 	class AShooterWeapon* CurrentWeapon;
 
 	/** Replicate where this pawn was last hit and damaged */
-	UPROPERTY(Transient, ReplicatedUsing=OnRep_LastTakeHitInfo)
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_LastTakeHitInfo)
 	struct FTakeHitInfo LastTakeHitInfo;
 
 	/** Time at which point the last take hit info for the actor times out and won't be replicated; Used to stop join-in-progress effects all over the screen */
 	float LastTakeHitTimeTimeout;
 
 	/** modifier for max movement speed */
-	UPROPERTY(EditDefaultsOnly, Category=Inventory)
+	UPROPERTY(EditDefaultsOnly, Category = Inventory)
 	float TargetingSpeedModifier;
 
 	/** current targeting state */
@@ -291,7 +304,7 @@ protected:
 	uint8 bIsTargeting : 1;
 
 	/** modifier for max movement speed */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	float RunningSpeedModifier;
 
 	/** current running state */
@@ -318,35 +331,35 @@ protected:
 	TArray<UMaterialInstanceDynamic*> MeshMIDs;
 
 	/** animation played on death */
-	UPROPERTY(EditDefaultsOnly, Category=Animation)
+	UPROPERTY(EditDefaultsOnly, Category = Animation)
 	UAnimMontage* DeathAnim;
 
 	/** sound played on death, local player only */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	USoundCue* DeathSound;
 
 	/** effect played on respawn */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	UParticleSystem* RespawnFX;
 
 	/** sound played on respawn */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	USoundCue* RespawnSound;
 
 	/** sound played when health is low */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	USoundCue* LowHealthSound;
 
 	/** sound played when running */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	USoundCue* RunLoopSound;
 
 	/** sound played when stop running */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	USoundCue* RunStopSound;
 
 	/** sound played when targeting state changes */
-	UPROPERTY(EditDefaultsOnly, Category=Pawn)
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	USoundCue* TargetingSound;
 
 	/** used to manipulate with run loop sound */
@@ -358,7 +371,7 @@ protected:
 	UAudioComponent* LowHealthWarningPlayer;
 
 	/** handles sounds for running */
-	void UpdateRunSounds(bool bNewRunning);
+	void UpdateRunSounds();
 
 	/** handle mesh visibility and updates */
 	void UpdatePawnMeshes();
@@ -369,17 +382,22 @@ protected:
 	/** Responsible for cleaning up bodies on clients. */
 	virtual void TornOff();
 
+private:
+
+	/** Whether or not the character is moving (based on movement input). */
+	bool IsMoving();
+
 	//////////////////////////////////////////////////////////////////////////
 	// Damage & death
 
 public:
 
 	/** Identifies if pawn is in its dying state */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Health)
-	uint32 bIsDying:1;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Health)
+	uint32 bIsDying : 1;
 
 	// Current health of the Pawn
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category=Health)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Health)
 	float Health;
 
 	/** Take damage, handle death */
@@ -395,20 +413,20 @@ public:
 	virtual bool CanDie(float KillingDamage, FDamageEvent const& DamageEvent, AController* Killer, AActor* DamageCauser) const;
 
 	/**
-	 * Kills pawn.  Server/authority only.
-	 * @param KillingDamage - Damage amount of the killing blow
-	 * @param DamageEvent - Damage event of the killing blow
-	 * @param Killer - Who killed this pawn
-	 * @param DamageCauser - the Actor that directly caused the damage (i.e. the Projectile that exploded, the Weapon that fired, etc)
-	 * @returns true if allowed
-	 */
+	* Kills pawn.  Server/authority only.
+	* @param KillingDamage - Damage amount of the killing blow
+	* @param DamageEvent - Damage event of the killing blow
+	* @param Killer - Who killed this pawn
+	* @param DamageCauser - the Actor that directly caused the damage (i.e. the Projectile that exploded, the Weapon that fired, etc)
+	* @returns true if allowed
+	*/
 	virtual bool Die(float KillingDamage, struct FDamageEvent const& DamageEvent, class AController* Killer, class AActor* DamageCauser);
 
 	// Die when we fall out of the world.
 	virtual void FellOutOfWorld(const class UDamageType& dmgType) override;
 
 	/** Called on the actor right before replication occurs */
-	virtual void PreReplication( IRepChangedPropertyTracker & ChangedPropertyTracker ) override;
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 protected:
 	/** notification when killed, for both the server and client. */
 	virtual void OnDeath(float KillingDamage, struct FDamageEvent const& DamageEvent, class APawn* InstigatingPawn, class AActor* DamageCauser);
@@ -449,10 +467,13 @@ protected:
 	/** update targeting state */
 	UFUNCTION(reliable, server, WithValidation)
 	void ServerSetTargeting(bool bNewTargeting);
-	
+
 	/** update targeting state */
 	UFUNCTION(reliable, server, WithValidation)
 	void ServerSetRunning(bool bNewRunning, bool bToggle);
+
+	/** Builds list of points to check for pausing replication for a connection*/
+	void BuildPauseReplicationCheckPoints(TArray<FVector>& RelevancyCheckPoints);
 
 protected:
 	/** Returns Mesh1P subobject **/

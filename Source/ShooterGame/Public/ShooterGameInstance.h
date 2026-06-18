@@ -1,11 +1,13 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "ShooterGame.h"
-#include "OnlineIdentityInterface.h"
-#include "OnlineSessionInterface.h"
+#include "Interfaces/OnlineIdentityInterface.h"
+#include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSessionSettings.h"
 #include "Engine/GameInstance.h"
+#include "Engine/NetworkDelegates.h"
 #include "ShooterGameInstance.generated.h"
 
 class FVariantData;
@@ -47,6 +49,19 @@ public:
 	bool							 bPrivilegesCheckedAndAllowed;
 };
 
+struct FShooterPlayTogetherInfo
+{
+	FShooterPlayTogetherInfo() : UserIndex(-1) {}
+	FShooterPlayTogetherInfo(int32 InUserIndex, const TArray<TSharedPtr<const FUniqueNetId>>& InUserIdList)
+		: UserIndex(InUserIndex)
+	{
+		UserIdList.Append(InUserIdList);
+	}
+	
+	int32 UserIndex;
+	TArray<TSharedPtr<const FUniqueNetId>> UserIdList;
+};
+
 class SShooterWaitDialog : public SCompoundWidget
 {
 public:
@@ -69,6 +84,13 @@ private:
 	FSlateColor GetTextColor() const;
 };
 
+UENUM()
+enum class EOnlineMode : uint8
+{
+	Offline,
+	LAN,
+	Online
+};
 
 
 UCLASS(config=Game)
@@ -86,22 +108,27 @@ public:
 	virtual void Init() override;
 	virtual void Shutdown() override;
 	virtual void StartGameInstance() override;
-
+	virtual void ReceivedNetworkEncryptionToken(const FString& EncryptionToken, const FOnEncryptionKeyResponse& Delegate) override;
+	virtual void ReceivedNetworkEncryptionAck(const FOnEncryptionKeyResponse& Delegate) override;
 
 	bool HostGame(ULocalPlayer* LocalPlayer, const FString& GameType, const FString& InTravelURL);
 	bool JoinSession(ULocalPlayer* LocalPlayer, int32 SessionIndexInSearchResults);
 	bool JoinSession(ULocalPlayer* LocalPlayer, const FOnlineSessionSearchResult& SearchResult);
+	void SetPendingInvite(const FShooterPendingInvite& InPendingInvite);
 
 	bool PlayDemo(ULocalPlayer* LocalPlayer, const FString& DemoName);
 	
 	/** Travel directly to the named session */
 	void TravelToSession(const FName& SessionName);
 
+	/** Get the Travel URL for a quick match */
+	static FString GetQuickMatchUrl();
+
 	/** Begin a hosted quick match */
 	void BeginHostingQuickMatch();
 
 	/** Initiates the session searching */
-	bool FindSessions(ULocalPlayer* PlayerOwner, bool bLANMatch);
+	bool FindSessions(ULocalPlayer* PlayerOwner, bool bIsDedicatedServer, bool bLANMatch);
 
 	/** Sends the game to the specified state. */
 	void GotoState(FName NewState);
@@ -129,10 +156,13 @@ public:
 	TSharedPtr< const FUniqueNetId > GetUniqueNetIdFromControllerId( const int ControllerId );
 
 	/** Returns true if the game is in online mode */
-	bool GetIsOnline() const { return bIsOnline; }
+	EOnlineMode GetOnlineMode() const { return OnlineMode; }
 
 	/** Sets the online mode of the game */
-	void SetIsOnline(bool bInIsOnline);
+	void SetOnlineMode(EOnlineMode InOnlineMode);
+
+	/** Updates the status of using multiplayer features */
+	void UpdateUsingMultiplayerFeatures(bool bIsUsingMultiplayerFeatures);
 
 	/** Sets the controller to ignore for pairing changes. Useful when we are showing external UI for manual profile switching. */
 	void SetIgnorePairingChangeForControllerId( const int32 ControllerId );
@@ -140,8 +170,14 @@ public:
 	/** Returns true if the passed in local player is signed in and online */
 	bool IsLocalPlayerOnline(ULocalPlayer* LocalPlayer);
 
+	/** Returns true if the passed in local player is signed in*/
+	bool IsLocalPlayerSignedIn(ULocalPlayer* LocalPlayer);
+
 	/** Returns true if owning player is online. Displays proper messaging if the user can't play */
 	bool ValidatePlayerForOnlinePlay(ULocalPlayer* LocalPlayer);
+
+	/** Returns true if owning player is signed in. Displays proper messaging if the user can't play */
+	bool ValidatePlayerIsSignedIn(ULocalPlayer* LocalPlayer);
 
 	/** Shuts down the session, and frees any net driver */
 	void CleanupSessionOnReturnToMenu();
@@ -162,6 +198,18 @@ public:
 	/** Show approved dialogs for various privileges failures */
 	void DisplayOnlinePrivilegeFailureDialogs(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults);
 
+	/** @return OnlineSession class to use for this player */
+	TSubclassOf<class UOnlineSession> GetOnlineSessionClass() override;
+
+	/** Create a session with the default map and game-type with the selected online settings */
+	bool HostQuickSession(ULocalPlayer& LocalPlayer, const FOnlineSessionSettings& SessionSettings);
+
+	/** Called when we receive a Play Together system event on PS4 */
+	void OnPlayTogetherEventReceived(const int32 UserIndex, const TArray<TSharedPtr<const FUniqueNetId>>& UserIdList);
+
+	/** Resets Play Together PS4 system event info after it's been handled */
+	void ResetPlayTogetherInfo() { PlayTogetherInfo = FShooterPlayTogetherInfo(); }
+
 private:
 
 	UPROPERTY(config)
@@ -181,8 +229,8 @@ private:
 	/** URL to travel to after pending network operations */
 	FString TravelURL;
 
-	/** Whether the match is online or not */
-	bool bIsOnline;
+	/** Current online mode of the game (offline, LAN, or online) */
+	EOnlineMode OnlineMode;
 
 	/** If true, enable splitscreen when map starts loading */
 	bool bPendingEnableSplitscreen;
@@ -212,7 +260,7 @@ private:
 	FTickerDelegate TickDelegate;
 
 	/** Handle to various registered delegates */
-	FDelegateHandle TickDelegateHandle;
+	FTSTicker::FDelegateHandle TickDelegateHandle;
 	FDelegateHandle TravelLocalSessionFailureDelegateHandle;
 	FDelegateHandle OnJoinSessionCompleteDelegateHandle;
 	FDelegateHandle OnSearchSessionsCompleteDelegateHandle;
@@ -221,25 +269,30 @@ private:
 	FDelegateHandle OnDestroySessionCompleteDelegateHandle;
 	FDelegateHandle OnCreatePresenceSessionCompleteDelegateHandle;
 
-	virtual void OnSessionUserInviteAccepted( 
-		const bool							bWasSuccess, 
-		const int32							ControllerId, 
-		TSharedPtr< const FUniqueNetId >	UserId, 
-		const FOnlineSessionSearchResult &	InviteResult 
-	) override;
+	/** Play Together on PS4 system event info */
+	FShooterPlayTogetherInfo PlayTogetherInfo;
 
-	void HandleNetworkConnectionStatusChanged(  EOnlineServerConnectionStatus::Type LastConnectionStatus, EOnlineServerConnectionStatus::Type ConnectionStatus );
+	/** Local player login status when the system is suspended */
+	TArray<ELoginStatus::Type> LocalPlayerOnlineStatus;
+
+	/** A hard-coded encryption key used to try out the encryption code. This is NOT SECURE, do not use this technique in production! */
+	TArray<uint8> DebugTestEncryptionKey;
+
+	void HandleNetworkConnectionStatusChanged(const FString& ServiceName, EOnlineServerConnectionStatus::Type LastConnectionStatus, EOnlineServerConnectionStatus::Type ConnectionStatus );
 
 	void HandleSessionFailure( const FUniqueNetId& NetId, ESessionFailure::Type FailureType );
 	
-	void OnPreLoadMap();
-	void OnPostLoadMap();
+	void OnPreLoadMap(const FString& MapName);
+	void OnPostLoadMap(UWorld*);
 	void OnPostDemoPlay();
 
 	virtual void HandleDemoPlaybackFailure( EDemoPlayFailure::Type FailureType, const FString& ErrorString ) override;
 
 	/** Delegate function executed after checking privileges for starting quick match */
 	void OnUserCanPlayInvite(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults);
+
+	/** Delegate function executed after checking privileges for Play Together on PS4 */
+	void OnUserCanPlayTogether(const FUniqueNetId& UserId, EUserPrivileges::Type Privilege, uint32 PrivilegeResults);
 
 	/** Delegate for ending a session */
 	FOnEndSessionCompleteDelegate OnEndSessionCompleteDelegate;
@@ -287,6 +340,9 @@ private:
 	/** Called after all the local players are registered in a session we're joining */
 	void FinishJoinSession(EOnJoinSessionCompleteResult::Type Result);
 
+	/** Send all invites for the current game session if we've created it because Play Together on PS4 was initiated*/
+	void SendPlayTogetherInvites();
+
 	/**
 	* Creates the message menu, clears other menus and sets the KingState to Message.
 	*
@@ -302,7 +358,7 @@ private:
 	bool LoadFrontEndMap(const FString& MapName);
 
 	/** Sets a rich presence string for all local players. */
-	void SetPresenceForLocalPlayers(const FVariantData& PresenceData);
+	void SetPresenceForLocalPlayers(const FString& StatusStr, const FVariantData& PresenceData);
 
 	/** Travel directly to the named session */
 	void InternalTravelToSession(const FName& SessionName);
@@ -329,7 +385,7 @@ private:
 	void HandleSafeFrameChanged();
 
 	// Callback to handle controller connection changes.
-	void HandleControllerConnectionChange(bool bIsConnection, int32 Unused, int32 GameUserIndex);
+	void HandleControllerConnectionChange(bool bIsConnection, FPlatformUserId UserId, int32 GameUserIndex);
 
 	// Callback to handle controller pairing changes.
 	FReply OnPairingUsePreviousProfile();
@@ -338,13 +394,15 @@ private:
 	FReply OnPairingUseNewProfile();
 
 	// Callback to handle controller pairing changes.
-	void HandleControllerPairingChanged(int GameUserIndex, const FUniqueNetId& PreviousUser, const FUniqueNetId& NewUser);
+	void HandleControllerPairingChanged(int GameUserIndex, FControllerPairingChangedUserInfo PreviousUser, FControllerPairingChangedUserInfo NewUser);
 
 	// Handle confirming the controller disconnected dialog.
 	FReply OnControllerReconnectConfirm();	
 
 protected:
 	bool HandleOpenCommand(const TCHAR* Cmd, FOutputDevice& Ar, UWorld* InWorld);
+	bool HandleDisconnectCommand(const TCHAR* Cmd, FOutputDevice& Ar, UWorld* InWorld);
+	bool HandleTravelCommand(const TCHAR* Cmd, FOutputDevice& Ar, UWorld* InWorld);
 };
 
 

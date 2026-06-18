@@ -1,4 +1,4 @@
-// Copyright 1998-2015 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 #include "ShooterPersistentUser.generated.h"
@@ -53,11 +53,20 @@ public:
 		return RocketsFired;
 	}
 
+	/** Is controller vibration turned on? */
+	FORCEINLINE bool GetVibration() const 
+	{
+		return bVibrationOpt;
+	}
+
 	/** Is the y axis inverted? */
 	FORCEINLINE bool GetInvertedYAxis() const
 	{
 		return bInvertedYAxis;
 	}
+
+	/** Setter for controller vibration option */
+	void SetVibration(bool bVibration);
 
 	/** Setter for inverted y axis */
 	void SetInvertedYAxis(bool bInvert);
@@ -152,6 +161,9 @@ protected:
 	/** Is the y axis inverted or not? */
 	UPROPERTY()
 	bool bInvertedYAxis;
+
+	UPROPERTY()
+	bool bVibrationOpt;
 
 private:
 	/** Internal.  True if data is changed but hasn't been saved. */

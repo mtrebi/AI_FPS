@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "EQS/MinDotProductChosenPositions.h"
 #include "ShooterGame.h"
 #include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
 #include "EnvironmentQuery/Tests/EnvQueryTest_Trace.h"
 #include "Bots/ShooterAIController.h"
-#include "Public/Others/HelperMethods.h"
-#include "Public/EQS/MinDotProductChosenPositions.h"
+#include "Others/HelperMethods.h"
+#include "EQS/MinDotProductChosenPositions.h"
 
 UMinDotProductChosenPositions::UMinDotProductChosenPositions(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -32,7 +33,7 @@ void UMinDotProductChosenPositions::RunTest(FEnvQueryInstance& QueryInstance) co
 
 
 	// Get all covers annotations within radius
-	UWorld * World = GEngine->GetWorldFromContextObject(QueryOwner);
+	UWorld * World = GEngine->GetWorldFromContextObjectChecked(QueryOwner);
 	
 	APawn * Pawn = Cast<APawn>(QueryOwner);
 
@@ -50,7 +51,7 @@ void UMinDotProductChosenPositions::RunTest(FEnvQueryInstance& QueryInstance) co
 	const FVector PlayerPosition = HelperMethods::GetPlayerPositionFromAI(World);
 
 	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It) {
-		const FVector ItemLocation = GetItemLocation(QueryInstance, *It);
+		const FVector ItemLocation = GetItemLocation(QueryInstance, It);
 		FVector ItemToPlayer = PlayerPosition - ItemLocation;
 
 		ItemToPlayer.Normalize();
